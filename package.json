@@ -1,0 +1,28 @@
+{
+  "name": "sin-kingdom",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "expo": "~56.0.12",
+    "expo-status-bar": "~56.0.4",
+    "expo-system-ui": "~56.0.5",
+    "react": "19.2.3",
+    "react-native": "0.85.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "android:usb": "./scripts/android-usb.sh",
+    "android:studio": "/snap/bin/android-studio android",
+    "android:release": "cd android && NODE_ENV=production JAVA_HOME=/snap/android-studio/current/jbr ANDROID_HOME=/home/rowena001/Android/Sdk PATH=/home/rowena001/Android/Sdk/platform-tools:/home/rowena001/Android/Sdk/emulator:$PATH ./gradlew :app:assembleRelease",
+    "android:install-release": "ANDROID_HOME=/home/rowena001/Android/Sdk PATH=/home/rowena001/Android/Sdk/platform-tools:$PATH adb install -r android/app/build/outputs/apk/release/app-release.apk",
+    "ios": "expo run:ios",
+    "web": "expo start --web"
+  },
+  "private": true
+}

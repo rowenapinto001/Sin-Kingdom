@@ -577,7 +577,6 @@ function HomeScreen({
     <View style={screenStyles.menuHomeRoot}>
       <StatusBar hidden />
       <Image source={menuHome} resizeMode="stretch" style={screenStyles.menuHomeImage} />
-      <View pointerEvents="none" style={screenStyles.menuSettingsCover} />
 
       <View pointerEvents="none" style={screenStyles.menuRankPatch}>
         <Text style={screenStyles.menuRankTop}>{rankNumber}</Text>
@@ -1331,17 +1330,6 @@ const screenStyles = StyleSheet.create({
     left: 0,
     width: '100%',
     height: '100%',
-  },
-  menuSettingsCover: {
-    position: 'absolute',
-    left: '60.3%',
-    top: '7.9%',
-    width: '17.8%',
-    height: '19.6%',
-    backgroundColor: '#070409',
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255,58,168,0.18)',
   },
   menuRankPatch: {
     position: 'absolute',

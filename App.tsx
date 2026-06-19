@@ -282,7 +282,15 @@ export default function App() {
           bodyguardName={selectedBodyguard.name}
           rankClass={rankClass}
           onNavigate={setScreen}
-          onPlay={() => setScreen('modes')}
+          onPlay={() => startRun(selectedModeId)}
+          onToggleMusic={() => writeProfile((current) => ({ ...current, settings: { ...current.settings, music: !current.settings.music } }))}
+          onCycleLanguage={() => {
+            const languages = ['English', 'Hindi', 'Spanish'];
+            writeProfile((current) => {
+              const nextIndex = (languages.indexOf(current.settings.language) + 1) % languages.length;
+              return { ...current, settings: { ...current.settings, language: languages[nextIndex] } };
+            });
+          }}
         />
       )}
       {screen === 'modes' && (
@@ -538,6 +546,8 @@ function HomeScreen({
   bodyguardName,
   onNavigate,
   onPlay,
+  onToggleMusic,
+  onCycleLanguage,
 }: {
   profile: PlayerProfile;
   topStatus: React.ReactNode;
@@ -546,30 +556,80 @@ function HomeScreen({
   rankClass: string;
   onNavigate: (screen: ScreenName) => void;
   onPlay: () => void;
+  onToggleMusic: () => void;
+  onCycleLanguage: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const playerName = profile.playerName || bodyguardName;
+  const rankNumber = profile.leaderboardScore <= 0 ? 0 : profile.rankNumber;
+  const rankLabel = profile.leaderboardScore <= 0 ? '---' : rankClassForRank(profile.rankNumber).toUpperCase();
+  const displayBodyguardName = profile.selectedBodyguardId === 'jake-stone' ? 'LUNA CROWN' : bodyguardName.toUpperCase();
+  const lives = Array.from({ length: profile.lifeSystem.maxLives }, (_, index) => index < profile.lifeSystem.lives);
+
+  const showHelp = () => {
+    Alert.alert(
+      'Sin Kingdom Help',
+      'Protect the Boss, guide the Bodyguard, collect cash and gems, clear all 5 missions in a run, and escape rival guards/security. Training mode is practice only. Ranked modes improve your score, rank, rewards, and unlocks.',
+    );
+  };
 
   return (
     <View style={screenStyles.menuHomeRoot}>
       <StatusBar hidden />
       <Image source={menuHome} resizeMode="stretch" style={screenStyles.menuHomeImage} />
+      <View pointerEvents="none" style={screenStyles.menuSettingsCover} />
 
       <View pointerEvents="none" style={screenStyles.menuRankPatch}>
-        <Text style={screenStyles.menuRankTop}>0</Text>
+        <Text style={screenStyles.menuRankTop}>{rankNumber}</Text>
       </View>
       <View pointerEvents="none" style={screenStyles.menuNamePatch}>
-        <Text style={screenStyles.menuNameText} numberOfLines={1}>{playerName.toUpperCase()}</Text>
+        <Text style={screenStyles.menuNameText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.45}>
+          {playerName.toUpperCase()}
+        </Text>
       </View>
       <View pointerEvents="none" style={screenStyles.menuRankLabelPatch}>
-        <Text style={screenStyles.menuRankLabel}>---</Text>
+        <Text style={screenStyles.menuRankLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>{rankLabel}</Text>
       </View>
-      <Text pointerEvents="none" style={screenStyles.menuLunaName}>LUNA CROWN</Text>
+      <View pointerEvents="none" style={screenStyles.menuLivesPatch}>
+        {lives.map((filled, index) => (
+          <Text key={index} style={[screenStyles.menuLifeHeart, !filled && screenStyles.menuLifeHeartEmpty]}>
+            {filled ? '♥' : '♡'}
+          </Text>
+        ))}
+      </View>
+      <Text pointerEvents="none" style={screenStyles.menuLunaName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>
+        {displayBodyguardName}
+      </Text>
+
+      {menuOpen ? (
+        <View style={screenStyles.menuQuickPanel}>
+          <Pressable onPress={onToggleMusic} style={screenStyles.menuQuickRow}>
+            <Text style={screenStyles.menuQuickIcon} allowFontScaling={false}>♪</Text>
+            <Text style={screenStyles.menuQuickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} allowFontScaling={false}>Music</Text>
+            <View style={[screenStyles.menuQuickToggle, profile.settings.music ? screenStyles.menuQuickToggleOn : screenStyles.menuQuickToggleOff]}>
+              <Text style={screenStyles.menuQuickToggleText} allowFontScaling={false}>{profile.settings.music ? 'ON' : 'OFF'}</Text>
+            </View>
+          </Pressable>
+          <Pressable onPress={showHelp} style={screenStyles.menuQuickRow}>
+            <Text style={screenStyles.menuQuickIcon} allowFontScaling={false}>?</Text>
+            <Text style={screenStyles.menuQuickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} allowFontScaling={false}>Help</Text>
+            <Text style={screenStyles.menuQuickArrow} allowFontScaling={false}>›</Text>
+          </Pressable>
+          <Pressable onPress={onCycleLanguage} style={screenStyles.menuQuickRow}>
+            <Text style={screenStyles.menuQuickIcon} allowFontScaling={false}>@</Text>
+            <Text style={screenStyles.menuQuickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} allowFontScaling={false}>Language</Text>
+            <View style={screenStyles.menuQuickLanguage}>
+              <Text style={screenStyles.menuQuickLanguageText} numberOfLines={1} allowFontScaling={false}>{profile.settings.language}</Text>
+            </View>
+          </Pressable>
+        </View>
+      ) : null}
 
       <Pressable onPress={() => onNavigate('missions')} style={screenStyles.menuTapMissions} />
       <Pressable onPress={() => onNavigate('bodyguards')} style={screenStyles.menuTapCharacters} />
       <Pressable onPress={() => onNavigate('leaderboard')} style={screenStyles.menuTapRank} />
       <Pressable onPress={() => onNavigate('daily')} style={screenStyles.menuTapRewards} />
-      <Pressable onPress={() => onNavigate('settings')} style={screenStyles.menuTapSettings} />
+      <Pressable onPress={() => setMenuOpen((open) => !open)} style={screenStyles.menuTapMenu} />
       <Pressable onPress={() => onNavigate('profile')} style={screenStyles.menuTapLogin} />
       <Pressable onPress={onPlay} style={screenStyles.menuTapPlay} />
     </View>
@@ -1272,20 +1332,31 @@ const screenStyles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  menuSettingsCover: {
+    position: 'absolute',
+    left: '60.3%',
+    top: '7.9%',
+    width: '17.8%',
+    height: '19.6%',
+    backgroundColor: '#070409',
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,58,168,0.18)',
+  },
   menuRankPatch: {
     position: 'absolute',
-    left: '4.0%',
+    left: '3.9%',
     top: '0.0%',
-    width: '5.8%',
-    height: '10.6%',
+    width: '6.2%',
+    height: '11.4%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#10070d',
-    borderRadius: 6,
+    borderRadius: 4,
   },
   menuRankTop: {
     color: colors.gold,
-    fontSize: 40,
+    fontSize: 43,
     fontWeight: '900',
     textShadowColor: '#000',
     textShadowRadius: 4,
@@ -1293,18 +1364,20 @@ const screenStyles = StyleSheet.create({
   menuNamePatch: {
     position: 'absolute',
     left: '68.8%',
-    top: '2.3%',
+    top: '1.9%',
     width: '22%',
-    height: '5.3%',
+    height: '6.2%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#07515b',
   },
   menuNameText: {
     color: colors.text,
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '900',
     letterSpacing: 0,
+    textAlign: 'center',
+    includeFontPadding: false,
   },
   menuRankLabelPatch: {
     position: 'absolute',
@@ -1321,11 +1394,42 @@ const screenStyles = StyleSheet.create({
     fontSize: 25,
     fontWeight: '900',
     letterSpacing: 0,
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  menuLivesPatch: {
+    position: 'absolute',
+    right: '1.8%',
+    top: '12.0%',
+    width: '19.6%',
+    height: '6.7%',
+    borderWidth: 1,
+    borderColor: '#ff3aa8',
+    borderRadius: 3,
+    backgroundColor: '#060407',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  menuLifeHeart: {
+    color: colors.red,
+    fontSize: 25,
+    fontWeight: '900',
+    includeFontPadding: false,
+    textShadowColor: '#ffffff',
+    textShadowRadius: 1.5,
+  },
+  menuLifeHeartEmpty: {
+    color: '#2b1118',
+    textShadowColor: '#ff3a4f',
+    textShadowRadius: 1,
   },
   menuLunaName: {
     position: 'absolute',
-    left: '54.7%',
+    left: '54.4%',
     top: '83.2%',
+    maxWidth: '18%',
     color: '#fff4fb',
     fontSize: 15,
     fontWeight: '900',
@@ -1335,6 +1439,84 @@ const screenStyles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
+    letterSpacing: 0,
+  },
+  menuQuickPanel: {
+    position: 'absolute',
+    left: '60.3%',
+    top: '7.9%',
+    width: '17.8%',
+    minHeight: '19.6%',
+    borderWidth: 1,
+    borderColor: '#ff3aa8',
+    borderRadius: 5,
+    backgroundColor: 'rgba(5,4,8,0.96)',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    gap: 6,
+  },
+  menuQuickRow: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  menuQuickIcon: {
+    width: 22,
+    color: '#ff2f96',
+    fontSize: 18,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  menuQuickLabel: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  menuQuickToggle: {
+    width: 48,
+    height: 26,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuQuickToggleOn: {
+    backgroundColor: colors.green,
+  },
+  menuQuickToggleOff: {
+    backgroundColor: '#8b2230',
+  },
+  menuQuickToggleText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '900',
+    includeFontPadding: false,
+  },
+  menuQuickArrow: {
+    color: '#ff2f96',
+    fontSize: 24,
+    fontWeight: '900',
+    includeFontPadding: false,
+  },
+  menuQuickLanguage: {
+    minWidth: 68,
+    maxWidth: 76,
+    height: 26,
+    borderRadius: 5,
+    backgroundColor: '#16151f',
+    borderWidth: 1,
+    borderColor: 'rgba(255,58,168,0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  menuQuickLanguageText: {
+    color: colors.gold,
+    fontSize: 10,
+    fontWeight: '900',
+    includeFontPadding: false,
   },
   menuTapMissions: {
     position: 'absolute',
@@ -1363,6 +1545,13 @@ const screenStyles = StyleSheet.create({
     top: '74.1%',
     width: '34.4%',
     height: '24.0%',
+  },
+  menuTapMenu: {
+    position: 'absolute',
+    left: '63.7%',
+    top: '2.0%',
+    width: '4.1%',
+    height: '5.8%',
   },
   menuTapSettings: {
     position: 'absolute',

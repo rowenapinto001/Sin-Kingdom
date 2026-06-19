@@ -41,7 +41,7 @@ import {
 } from './src/game/progression';
 
 const loadingHero = require('./assets/loading-hero.png');
-const menuHome = require('./assets/menu-home.png');
+const menuHome = require('./assets/menu-home-clean.png');
 const loadingHeroAspectRatio = 1448 / 1086;
 const loadingHeroZoom = 1.12;
 
@@ -1357,10 +1357,10 @@ const screenStyles = StyleSheet.create({
     height: '6.2%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#07515b',
+    backgroundColor: colors.gold,
   },
   menuNameText: {
-    color: colors.text,
+    color: '#17110a',
     fontSize: 22,
     fontWeight: '900',
     letterSpacing: 0,
@@ -1391,10 +1391,6 @@ const screenStyles = StyleSheet.create({
     top: '12.0%',
     width: '19.6%',
     height: '6.7%',
-    borderWidth: 1,
-    borderColor: '#ff3aa8',
-    borderRadius: 3,
-    backgroundColor: '#060407',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

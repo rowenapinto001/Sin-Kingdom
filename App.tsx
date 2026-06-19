@@ -46,6 +46,42 @@ const homeBossMale = require('./assets/home-boss-male.png');
 const homeBossFemale = require('./assets/home-boss-female.png');
 const loadingHeroAspectRatio = 1448 / 1086;
 const loadingHeroZoom = 1.12;
+const homeRewardNames = [
+  'Downtown',
+  'Harbor',
+  'Desert Base',
+  'Neon Outpost',
+  'Slums',
+  'Skyline',
+  'Industry',
+  'Arctic Base',
+  'Jungle Ruins',
+  'Island Resort',
+  'Mega Lab',
+  'Spaceport',
+  'Wasteland',
+  'Oasis Ruins',
+  'Crystal Canyon',
+  'Volcano Core',
+];
+const homeRewardColors = [
+  '#201a6f',
+  '#1c416b',
+  '#a86a27',
+  '#33138b',
+  '#8d4a20',
+  '#1d3b88',
+  '#852319',
+  '#22435a',
+  '#176644',
+  '#0f7c87',
+  '#352077',
+  '#28246e',
+  '#945223',
+  '#7d5525',
+  '#3f2586',
+  '#661b65',
+];
 
 type RunResult = {
   cashEarned: number;
@@ -591,6 +627,28 @@ function HomeScreen({
       <View pointerEvents="none" style={screenStyles.menuRankLabelPatch}>
         <Text style={screenStyles.menuRankLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>{rankLabel}</Text>
       </View>
+      <View pointerEvents="none" style={screenStyles.menuRewardPanel}>
+        <Text style={screenStyles.menuRewardTitle}>NEXT REWARD</Text>
+        <View style={screenStyles.menuRewardGrid}>
+          {homeRewardNames.map((name, index) => (
+            <View key={name} style={screenStyles.menuRewardCard}>
+              <View style={[screenStyles.menuRewardThumb, { backgroundColor: homeRewardColors[index] }]}>
+                <View style={screenStyles.menuRewardGlow} />
+                <View style={[screenStyles.menuRewardSkyline, { left: '8%', height: '34%' }]} />
+                <View style={[screenStyles.menuRewardSkyline, { left: '28%', height: '58%' }]} />
+                <View style={[screenStyles.menuRewardSkyline, { left: '52%', height: '45%' }]} />
+                <View style={[screenStyles.menuRewardSkyline, { left: '76%', height: '68%' }]} />
+              </View>
+              <View style={screenStyles.menuRewardLabelRow}>
+                <Text style={screenStyles.menuRewardDot}>●</Text>
+                <Text style={screenStyles.menuRewardName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>
+                  {name.toUpperCase()}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
       <View pointerEvents="none" style={screenStyles.menuLivesPatch}>
         {lives.map((filled, index) => (
           <Text key={index} style={[screenStyles.menuLifeHeart, !filled && screenStyles.menuLifeHeartEmpty]}>
@@ -600,6 +658,7 @@ function HomeScreen({
       </View>
       <View pointerEvents="none" style={screenStyles.menuBossCard}>
         <Text style={screenStyles.menuBossTitle}>BOSS</Text>
+        <View style={screenStyles.menuBossSlash} />
         <View style={screenStyles.menuBossPortraitRow}>
           <View style={screenStyles.menuBossPortraitWrap}>
             <Image source={homeBossMale} resizeMode="cover" style={screenStyles.menuBossPortrait} />
@@ -1367,17 +1426,17 @@ const screenStyles = StyleSheet.create({
   },
   menuNamePatch: {
     position: 'absolute',
-    left: '68.8%',
-    top: '2.1%',
-    width: '22.0%',
-    height: '5.2%',
+    left: '81.8%',
+    top: '2.2%',
+    width: '10.4%',
+    height: '4.3%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#aacdf8',
   },
   menuNameText: {
     color: '#17110a',
-    fontSize: 21,
+    fontSize: 15,
     fontWeight: '900',
     letterSpacing: 0,
     textAlign: 'center',
@@ -1401,12 +1460,92 @@ const screenStyles = StyleSheet.create({
     textAlign: 'center',
     includeFontPadding: false,
   },
+  menuRewardPanel: {
+    position: 'absolute',
+    left: '0.9%',
+    top: '62.4%',
+    width: '30.5%',
+    height: '35.6%',
+    borderWidth: 1,
+    borderColor: '#ff4bd8',
+    borderRadius: 3,
+    backgroundColor: 'rgba(3,3,7,0.94)',
+    paddingHorizontal: 6,
+    paddingTop: 17,
+    paddingBottom: 5,
+  },
+  menuRewardTitle: {
+    position: 'absolute',
+    top: -1,
+    left: 58,
+    right: 58,
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '900',
+    textAlign: 'center',
+    includeFontPadding: false,
+    backgroundColor: '#060407',
+  },
+  menuRewardGrid: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: 3,
+    rowGap: 3,
+  },
+  menuRewardCard: {
+    width: '23.0%',
+    height: '22.0%',
+    borderWidth: 1,
+    borderColor: '#ff3dc7',
+    backgroundColor: '#090711',
+    padding: 2,
+  },
+  menuRewardThumb: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  menuRewardGlow: {
+    position: 'absolute',
+    right: -6,
+    top: -5,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,188,74,0.65)',
+  },
+  menuRewardSkyline: {
+    position: 'absolute',
+    bottom: 0,
+    width: '12%',
+    backgroundColor: 'rgba(5,4,16,0.72)',
+  },
+  menuRewardLabelRow: {
+    height: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingTop: 1,
+  },
+  menuRewardDot: {
+    color: '#ff247d',
+    fontSize: 5.5,
+    includeFontPadding: false,
+  },
+  menuRewardName: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 5.2,
+    fontWeight: '900',
+    includeFontPadding: false,
+    letterSpacing: 0,
+  },
   menuLivesPatch: {
     position: 'absolute',
-    right: '4.4%',
-    top: '10.2%',
-    width: '15.8%',
-    height: '5.1%',
+    right: '2.0%',
+    top: '9.9%',
+    width: '16.9%',
+    height: '5.3%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1414,7 +1553,7 @@ const screenStyles = StyleSheet.create({
   },
   menuLifeHeart: {
     color: colors.red,
-    fontSize: 21,
+    fontSize: 24,
     fontWeight: '900',
     includeFontPadding: false,
     textShadowColor: '#ffffff',
@@ -1427,11 +1566,11 @@ const screenStyles = StyleSheet.create({
   },
   menuLunaName: {
     position: 'absolute',
-    left: '54.2%',
-    top: '64.0%',
+    left: '58.0%',
+    top: '76.8%',
     maxWidth: '18%',
     color: '#fff4fb',
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '900',
     textShadowColor: '#ff3aa8',
     textShadowRadius: 8,
@@ -1443,10 +1582,10 @@ const screenStyles = StyleSheet.create({
   },
   menuBossCard: {
     position: 'absolute',
-    right: '5.0%',
-    top: '17.7%',
-    width: '11.7%',
-    height: '17.0%',
+    right: '6.0%',
+    top: '17.1%',
+    width: '11.6%',
+    height: '20.7%',
     borderWidth: 1,
     borderColor: '#ff4bd8',
     backgroundColor: 'rgba(8,4,10,0.74)',
@@ -1463,7 +1602,7 @@ const screenStyles = StyleSheet.create({
     backgroundColor: 'rgba(138,18,113,0.72)',
     borderWidth: 1,
     borderColor: '#ff4bd8',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '900',
     textAlign: 'center',
     includeFontPadding: false,
@@ -1480,6 +1619,20 @@ const screenStyles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingBottom: 3,
     overflow: 'hidden',
+  },
+  menuBossSlash: {
+    position: 'absolute',
+    left: '48%',
+    top: '12%',
+    width: 4,
+    height: '72%',
+    zIndex: 3,
+    borderRadius: 6,
+    backgroundColor: '#fff2ff',
+    shadowColor: '#ff4bd8',
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    transform: [{ rotate: '20deg' }],
   },
   menuBossPortrait: {
     position: 'absolute',
@@ -1503,7 +1656,7 @@ const screenStyles = StyleSheet.create({
     borderColor: '#ff4bd8',
     paddingHorizontal: 4,
     paddingVertical: 1,
-    fontSize: 8,
+    fontSize: 8.5,
     fontWeight: '900',
     includeFontPadding: false,
   },

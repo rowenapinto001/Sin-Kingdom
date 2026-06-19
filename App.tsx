@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   allMissions,
@@ -8,10 +8,8 @@ import {
   bossById,
   bosses,
   funnyDances,
-  GAME_SUBTITLE,
   GAME_TITLE,
   leaderboardSeeds,
-  loadingTips,
   missionById,
   modeById,
   modes,
@@ -42,6 +40,11 @@ import {
   toLeaderboardEntry,
 } from './src/game/progression';
 
+const loadingHero = require('./assets/loading-hero.png');
+const menuHome = require('./assets/menu-home.png');
+const loadingHeroAspectRatio = 1448 / 1086;
+const loadingHeroZoom = 1.12;
+
 type RunResult = {
   cashEarned: number;
   gemsEarned: number;
@@ -60,7 +63,6 @@ export default function App() {
   const [missionResult, setMissionResult] = useState<RewardResult | null>(null);
   const [runResult, setRunResult] = useState<RunResult | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [tipIndex, setTipIndex] = useState(0);
   const [alertMeter, setAlertMeter] = useState(18);
   const [policeMeter, setPoliceMeter] = useState(10);
   const [playerPoint, setPlayerPoint] = useState({ x: 46, y: 58 });
@@ -71,7 +73,7 @@ export default function App() {
 
   useEffect(() => {
     if (screen === 'splash') {
-      const timeout = setTimeout(() => setScreen('loading'), 2100);
+      const timeout = setTimeout(() => setScreen('loading'), 3200);
       return () => clearTimeout(timeout);
     }
     return undefined;
@@ -81,14 +83,13 @@ export default function App() {
     if (screen !== 'loading') return undefined;
     const interval = setInterval(() => {
       setLoadingProgress((value) => {
-        const next = Math.min(100, value + 8);
+        const next = Math.min(100, value + 5);
         if (next >= 100 && profile) {
           clearInterval(interval);
           setTimeout(() => setScreen('home'), 350);
         }
         return next;
       });
-      setTipIndex((value) => (value + 1) % loadingTips.length);
     }, 260);
     return () => clearInterval(interval);
   }, [screen, profile]);
@@ -258,7 +259,7 @@ export default function App() {
   };
 
   if (screen === 'splash') return <SplashScreen />;
-  if (screen === 'loading' || !profile) return <LoadingScreen progress={loadingProgress} tip={loadingTips[tipIndex]} />;
+  if (screen === 'loading' || !profile) return <LoadingScreen progress={loadingProgress} />;
 
   const topStatus = (
     <TopStatus
@@ -480,44 +481,43 @@ export default function App() {
 
 function SplashScreen() {
   return (
-    <Screen scroll={false}>
-      <View style={screenStyles.splashWrap}>
-        <View style={screenStyles.skyPanel}>
-          <View style={[screenStyles.characterSilhouette, { left: 20, height: 122, backgroundColor: '#f7b733' }]} />
-          <View style={[screenStyles.characterSilhouette, { left: 84, height: 156, backgroundColor: '#2a1119' }]} />
-          <View style={[screenStyles.characterSilhouette, { left: 150, height: 190, backgroundColor: '#111018' }]} />
-          <View style={[screenStyles.characterSilhouette, { right: 74, height: 180, backgroundColor: '#241c24' }]} />
-          <View style={[screenStyles.characterSilhouette, { right: 18, height: 132, backgroundColor: '#5f2d38' }]} />
-          <Text style={screenStyles.logo}>{GAME_TITLE}</Text>
-          <Text style={screenStyles.logoSub}>{GAME_SUBTITLE}</Text>
-        </View>
-        <Text style={screenStyles.loadingText}>Preparing the underground hideout...</Text>
-        <View style={screenStyles.loadingDots}>
-          <View style={screenStyles.dot} />
-          <View style={[screenStyles.dot, { backgroundColor: colors.gold }]} />
-          <View style={screenStyles.dot} />
-        </View>
-      </View>
-    </Screen>
+    <View style={screenStyles.fullscreenRoot}>
+      <StatusBar hidden />
+      <LoadingHeroArt liftLogo />
+    </View>
   );
 }
 
-function LoadingScreen({ progress, tip }: { progress: number; tip: string }) {
+function LoadingScreen({ progress }: { progress: number }) {
   return (
-    <Screen scroll={false}>
-      <View style={screenStyles.loadingWrap}>
-        <Text style={screenStyles.logoSmall}>{GAME_TITLE}</Text>
-        <Text style={screenStyles.loadingText}>Preparing the underground hideout...</Text>
-        <View style={screenStyles.progressTrack}>
-          <View style={[screenStyles.progressFill, { width: `${progress}%` }]} />
+    <View style={screenStyles.fullscreenRoot}>
+      <StatusBar hidden />
+      <LoadingHeroArt liftLogo />
+      <View style={screenStyles.loadingHud}>
+        <View style={screenStyles.loadingHudTrack}>
+          <View style={[screenStyles.loadingHudFill, { width: `${progress}%` }]} />
         </View>
-        <Text style={screenStyles.percent}>{progress}%</Text>
-        <Card style={{ width: '100%' }}>
-          <Text style={screenStyles.tipLabel}>TIP</Text>
-          <Text style={screenStyles.tipText}>{tip}</Text>
-        </Card>
       </View>
-    </Screen>
+    </View>
+  );
+}
+
+function LoadingHeroArt({ liftLogo = false }: { liftLogo?: boolean }) {
+  const { width, height } = useWindowDimensions();
+  const screenAspectRatio = width / height;
+  const baseImageWidth = screenAspectRatio > loadingHeroAspectRatio ? width : height * loadingHeroAspectRatio;
+  const baseImageHeight = screenAspectRatio > loadingHeroAspectRatio ? width / loadingHeroAspectRatio : height;
+  const imageWidth = baseImageWidth * loadingHeroZoom;
+  const imageHeight = baseImageHeight * loadingHeroZoom;
+  const imageLeft = (width - imageWidth) / 2;
+  const imageTop = liftLogo ? -Math.min(300, height * 0.33) : 0;
+
+  return (
+    <Image
+      source={loadingHero}
+      resizeMode="stretch"
+      style={[screenStyles.wholeHeroImage, { width: imageWidth, height: imageHeight, left: imageLeft, top: imageTop }]}
+    />
   );
 }
 
@@ -534,10 +534,8 @@ function TopStatus({ cash, gems, lives, nextLife, rank }: { cash: number; gems: 
 
 function HomeScreen({
   profile,
-  topStatus,
   bossName,
   bodyguardName,
-  rankClass,
   onNavigate,
   onPlay,
 }: {
@@ -549,50 +547,32 @@ function HomeScreen({
   onNavigate: (screen: ScreenName) => void;
   onPlay: () => void;
 }) {
-  const menu: { label: string; icon: string; screen: ScreenName }[] = [
-    { label: 'Modes', icon: 'M', screen: 'modes' },
-    { label: 'Missions', icon: '5', screen: 'missions' },
-    { label: 'Garage', icon: 'V', screen: 'garage' },
-    { label: 'Characters', icon: 'B', screen: 'bodyguards' },
-    { label: 'Weapons', icon: 'W', screen: 'weapons' },
-    { label: 'Powerups', icon: 'P', screen: 'powerups' },
-    { label: 'Outfits', icon: 'O', screen: 'outfits' },
-    { label: 'Shop', icon: '$', screen: 'shop' },
-    { label: 'Settings', icon: 'S', screen: 'settings' },
-    { label: 'Leaderboard', icon: '#', screen: 'leaderboard' },
-    { label: 'Daily Rewards', icon: '+', screen: 'daily' },
-    { label: 'Profile', icon: '@', screen: 'profile' },
-  ];
+  const playerName = profile.playerName || bodyguardName;
 
   return (
-    <Screen title="Underground Hideout" subtitle="Neon vault, mission board, vehicle entrance, camera wall." right={topStatus}>
-      <View style={screenStyles.heroHideout}>
-        <View style={screenStyles.vaultDoor} />
-        <View style={screenStyles.bossChair} />
-        <View style={screenStyles.weaponWall}>
-          <Text style={screenStyles.hideoutLabel}>WEAPON WALL</Text>
-        </View>
-        <View style={screenStyles.vehicleGate}>
-          <Text style={screenStyles.hideoutLabel}>GARAGE</Text>
-        </View>
-        <Text style={screenStyles.hideoutTitle}>{GAME_TITLE}</Text>
+    <View style={screenStyles.menuHomeRoot}>
+      <StatusBar hidden />
+      <Image source={menuHome} resizeMode="stretch" style={screenStyles.menuHomeImage} />
+
+      <View pointerEvents="none" style={screenStyles.menuRankPatch}>
+        <Text style={screenStyles.menuRankTop}>0</Text>
       </View>
-      <Card>
-        <Text style={screenStyles.cardTitle}>Player Card</Text>
-        <Text style={screenStyles.bodyText}>Boss: {bossName}  |  Bodyguard: {bodyguardName}</Text>
-        <Text style={screenStyles.bodyText}>Rank Class: {rankClass}</Text>
-        <Text style={screenStyles.bodyText}>Ranked missions: {profile.totalMissionsCompleted}  |  5-mission runs: {profile.totalRunsCompleted}</Text>
-      </Card>
-      <GameButton label="Play" icon=">" onPress={onPlay} />
-      <View style={screenStyles.menuGrid}>
-        {menu.map((item) => (
-          <Pressable key={item.label} onPress={() => onNavigate(item.screen)} style={screenStyles.menuTile}>
-            <Text style={screenStyles.menuIcon}>{item.icon}</Text>
-            <Text style={screenStyles.menuLabel}>{item.label}</Text>
-          </Pressable>
-        ))}
+      <View pointerEvents="none" style={screenStyles.menuNamePatch}>
+        <Text style={screenStyles.menuNameText} numberOfLines={1}>{playerName.toUpperCase()}</Text>
       </View>
-    </Screen>
+      <View pointerEvents="none" style={screenStyles.menuRankLabelPatch}>
+        <Text style={screenStyles.menuRankLabel}>---</Text>
+      </View>
+      <Text pointerEvents="none" style={screenStyles.menuLunaName}>LUNA CROWN</Text>
+
+      <Pressable onPress={() => onNavigate('missions')} style={screenStyles.menuTapMissions} />
+      <Pressable onPress={() => onNavigate('bodyguards')} style={screenStyles.menuTapCharacters} />
+      <Pressable onPress={() => onNavigate('leaderboard')} style={screenStyles.menuTapRank} />
+      <Pressable onPress={() => onNavigate('daily')} style={screenStyles.menuTapRewards} />
+      <Pressable onPress={() => onNavigate('settings')} style={screenStyles.menuTapSettings} />
+      <Pressable onPress={() => onNavigate('profile')} style={screenStyles.menuTapLogin} />
+      <Pressable onPress={onPlay} style={screenStyles.menuTapPlay} />
+    </View>
   );
 }
 
@@ -1099,6 +1079,89 @@ function CycleRow<T extends string>({ label, value, values, onPick }: { label: s
 }
 
 const screenStyles = StyleSheet.create({
+  fullscreenRoot: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    backgroundColor: colors.bg,
+    overflow: 'hidden',
+  },
+  wholeHeroStage: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingTop: 14,
+    backgroundColor: '#050207',
+  },
+  wholeHeroImage: {
+    position: 'absolute',
+  },
+  heroBackdrop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+  },
+  heroOverlay: {
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 18,
+    paddingBottom: 38,
+    backgroundColor: '#050207',
+  },
+  loadingOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingBottom: 34,
+    backgroundColor: 'rgba(0,0,0,0.30)',
+  },
+  splashTextPanel: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingPanel: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(8,7,13,0.72)',
+    padding: 16,
+  },
+  splashDots: {
+    position: 'absolute',
+    right: 28,
+    bottom: 24,
+    flexDirection: 'row',
+    gap: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.32)',
+  },
+  loadingHud: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 34,
+    alignItems: 'center',
+  },
+  loadingHudTrack: {
+    width: 205,
+    height: 10,
+    borderRadius: 9,
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
+  },
+  loadingHudFill: {
+    height: '100%',
+    backgroundColor: colors.red,
+  },
   splashWrap: {
     flex: 1,
     justifyContent: 'center',
@@ -1196,6 +1259,623 @@ const screenStyles = StyleSheet.create({
     justifyContent: 'flex-start',
     gap: 6,
     width: '100%',
+  },
+  menuHomeRoot: {
+    flex: 1,
+    backgroundColor: '#06020a',
+    overflow: 'hidden',
+  },
+  menuHomeImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+  },
+  menuRankPatch: {
+    position: 'absolute',
+    left: '4.0%',
+    top: '0.0%',
+    width: '5.8%',
+    height: '10.6%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10070d',
+    borderRadius: 6,
+  },
+  menuRankTop: {
+    color: colors.gold,
+    fontSize: 40,
+    fontWeight: '900',
+    textShadowColor: '#000',
+    textShadowRadius: 4,
+  },
+  menuNamePatch: {
+    position: 'absolute',
+    left: '68.8%',
+    top: '2.3%',
+    width: '22%',
+    height: '5.3%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#07515b',
+  },
+  menuNameText: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  menuRankLabelPatch: {
+    position: 'absolute',
+    left: '13.0%',
+    top: '60.8%',
+    width: '13.0%',
+    height: '7.0%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#080509',
+  },
+  menuRankLabel: {
+    color: colors.text,
+    fontSize: 25,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  menuLunaName: {
+    position: 'absolute',
+    left: '54.7%',
+    top: '83.2%',
+    color: '#fff4fb',
+    fontSize: 15,
+    fontWeight: '900',
+    textShadowColor: '#ff3aa8',
+    textShadowRadius: 8,
+    backgroundColor: 'rgba(5,2,7,0.42)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  menuTapMissions: {
+    position: 'absolute',
+    left: '0.9%',
+    top: '20.8%',
+    width: '17.5%',
+    height: '7.2%',
+  },
+  menuTapCharacters: {
+    position: 'absolute',
+    left: '0.9%',
+    top: '29.6%',
+    width: '25.6%',
+    height: '27.6%',
+  },
+  menuTapRank: {
+    position: 'absolute',
+    left: '0.9%',
+    top: '57.7%',
+    width: '25.6%',
+    height: '16.0%',
+  },
+  menuTapRewards: {
+    position: 'absolute',
+    left: '0.9%',
+    top: '74.1%',
+    width: '34.4%',
+    height: '24.0%',
+  },
+  menuTapSettings: {
+    position: 'absolute',
+    left: '61.4%',
+    top: '8.3%',
+    width: '15.7%',
+    height: '18.7%',
+  },
+  menuTapLogin: {
+    position: 'absolute',
+    right: '1.8%',
+    top: '0.9%',
+    width: '5.6%',
+    height: '9.9%',
+  },
+  menuTapPlay: {
+    position: 'absolute',
+    right: '2.4%',
+    bottom: '1.1%',
+    width: '24.2%',
+    height: '14.0%',
+  },
+  lobbyRoot: {
+    flex: 1,
+    backgroundColor: '#09030d',
+    overflow: 'hidden',
+  },
+  lobbySky: {
+    position: 'absolute',
+    left: '18%',
+    right: '15%',
+    top: 46,
+    height: '52%',
+    borderWidth: 2,
+    borderColor: '#ff4bd8',
+    backgroundColor: '#261244',
+    overflow: 'hidden',
+  },
+  lobbySunset: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#863354',
+  },
+  lobbyTower: {
+    position: 'absolute',
+    bottom: 0,
+    width: '3.8%',
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255,75,216,0.28)',
+  },
+  lobbyWindowLine: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  lobbyRoom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  lobbyCeiling: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 40,
+    borderBottomWidth: 3,
+    borderColor: '#ff4bd8',
+    backgroundColor: '#18081c',
+  },
+  lobbyFloor: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -120,
+    height: '43%',
+    borderTopWidth: 2,
+    borderColor: 'rgba(255,75,216,0.5)',
+    backgroundColor: '#180915',
+    transform: [{ skewY: '-7deg' }],
+  },
+  lobbyWeaponWall: {
+    position: 'absolute',
+    right: 26,
+    top: 132,
+    width: 140,
+    height: 128,
+    borderWidth: 2,
+    borderColor: 'rgba(255,75,216,0.55)',
+    backgroundColor: 'rgba(14,7,13,0.64)',
+  },
+  lobbyVault: {
+    position: 'absolute',
+    right: 54,
+    bottom: 86,
+    width: 72,
+    height: 92,
+    borderRadius: 36,
+    borderWidth: 6,
+    borderColor: colors.goldSoft,
+    backgroundColor: 'rgba(12,8,11,0.7)',
+  },
+  lobbyTopBar: {
+    position: 'absolute',
+    top: 6,
+    left: 18,
+    right: 18,
+    height: 60,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 18,
+  },
+  lobbyRankEmblem: {
+    width: 88,
+    height: 78,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lobbyRankNumber: {
+    color: colors.gold,
+    fontSize: 30,
+    fontWeight: '900',
+    textShadowColor: '#000',
+    textShadowRadius: 4,
+  },
+  lobbyRankCrown: {
+    color: '#ffe9a1',
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: -8,
+  },
+  lobbyMenuIcon: {
+    marginLeft: 'auto',
+    width: 52,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lobbyMenuLines: {
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  lobbyNamePlate: {
+    minWidth: 260,
+    maxWidth: 360,
+    height: 50,
+    paddingHorizontal: 20,
+    borderWidth: 2,
+    borderColor: '#24dbf3',
+    backgroundColor: 'rgba(10,79,91,0.84)',
+    justifyContent: 'center',
+  },
+  lobbyNameText: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 0,
+    textAlign: 'center',
+  },
+  lobbyLogin: {
+    width: 68,
+    height: 58,
+    borderWidth: 2,
+    borderColor: '#1c5cb7',
+    backgroundColor: 'rgba(14,22,45,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lobbyAvatar: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  lobbyLoginText: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  lobbyLeftPanel: {
+    position: 'absolute',
+    left: 16,
+    top: 86,
+    width: 310,
+    gap: 8,
+  },
+  lobbyMissionButton: {
+    height: 44,
+    borderWidth: 2,
+    borderColor: '#ff3aa8',
+    backgroundColor: 'rgba(11,7,14,0.9)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    gap: 14,
+  },
+  lobbyMissionIcon: {
+    color: '#ff4bc2',
+    fontSize: 26,
+    fontWeight: '900',
+  },
+  lobbyMissionText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  lobbyArrow: {
+    color: '#ff3aa8',
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  lobbyPanelBox: {
+    borderWidth: 1,
+    borderColor: '#ff3aa8',
+    backgroundColor: 'rgba(8,5,12,0.82)',
+    padding: 8,
+    height: 126,
+  },
+  lobbyPanelTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  lobbyCharacterRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  lobbyCharacterCard: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: '#ff3bd1',
+    backgroundColor: 'rgba(30,7,32,0.8)',
+    padding: 6,
+    height: 82,
+  },
+  lobbyPortrait: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#22152a',
+  },
+  lobbyPortraitActive: {
+    backgroundColor: '#3a1932',
+  },
+  lobbyPortraitInitial: {
+    color: colors.text,
+    fontSize: 30,
+    fontWeight: '900',
+  },
+  lobbyPortraitName: {
+    color: colors.text,
+    fontSize: 8,
+    fontWeight: '900',
+    marginTop: 5,
+    textAlign: 'center',
+  },
+  lobbyRankPanel: {
+    height: 74,
+    borderWidth: 1,
+    borderColor: '#ff3aa8',
+    backgroundColor: 'rgba(8,5,12,0.86)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+  },
+  lobbyRankBadge: {
+    width: 54,
+    height: 52,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#35172b',
+  },
+  lobbyRankSkull: {
+    color: colors.gold,
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  lobbyRankInfo: {
+    flex: 1,
+  },
+  lobbyRankDash: {
+    color: colors.text,
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  lobbyRankProgress: {
+    color: colors.text,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  lobbyRewards: {
+    borderWidth: 1,
+    borderColor: '#ff3aa8',
+    backgroundColor: 'rgba(8,5,12,0.84)',
+    padding: 8,
+    height: 144,
+  },
+  lobbyRewardGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  lobbyRewardTile: {
+    width: '31.8%',
+    borderWidth: 1,
+    borderColor: '#ff3aa8',
+    padding: 3,
+    backgroundColor: '#16091a',
+  },
+  lobbyRewardArt: {
+    height: 28,
+    borderRadius: 3,
+    marginBottom: 2,
+  },
+  lobbyRewardName: {
+    color: colors.text,
+    fontSize: 9,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  lobbyHeroCharacter: {
+    position: 'absolute',
+    left: '47%',
+    top: 96,
+    width: 90,
+    height: 300,
+    alignItems: 'center',
+  },
+  lobbyHeroHead: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#4c271f',
+    borderWidth: 2,
+    borderColor: colors.gold,
+  },
+  lobbyHeroBody: {
+    width: 52,
+    height: 106,
+    borderRadius: 22,
+    backgroundColor: '#dcd9df',
+    borderWidth: 3,
+    borderColor: colors.goldSoft,
+    marginTop: -2,
+  },
+  lobbyHeroArmLeft: {
+    position: 'absolute',
+    top: 52,
+    left: 7,
+    width: 16,
+    height: 96,
+    borderRadius: 12,
+    backgroundColor: '#dcd9df',
+    transform: [{ rotate: '10deg' }],
+  },
+  lobbyHeroArmRight: {
+    position: 'absolute',
+    top: 52,
+    right: 8,
+    width: 16,
+    height: 96,
+    borderRadius: 12,
+    backgroundColor: '#dcd9df',
+    transform: [{ rotate: '-10deg' }],
+  },
+  lobbyHeroLegLeft: {
+    position: 'absolute',
+    top: 138,
+    left: 27,
+    width: 18,
+    height: 126,
+    borderRadius: 14,
+    backgroundColor: '#dcd9df',
+    transform: [{ rotate: '7deg' }],
+  },
+  lobbyHeroLegRight: {
+    position: 'absolute',
+    top: 138,
+    right: 27,
+    width: 18,
+    height: 126,
+    borderRadius: 14,
+    backgroundColor: '#dcd9df',
+    transform: [{ rotate: '-7deg' }],
+  },
+  lobbyRightPanel: {
+    position: 'absolute',
+    top: 72,
+    right: 20,
+    width: 300,
+    gap: 18,
+  },
+  lobbySettingsBox: {
+    width: 220,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#ff3aa8',
+    backgroundColor: 'rgba(5,4,8,0.9)',
+    paddingVertical: 8,
+  },
+  lobbySettingsRow: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+  },
+  lobbySettingsIcon: {
+    color: '#ff3aa8',
+    fontSize: 20,
+    fontWeight: '900',
+    width: 28,
+    textAlign: 'center',
+  },
+  lobbySettingsText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  lobbyOnBadge: {
+    color: colors.text,
+    backgroundColor: colors.green,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 4,
+    fontWeight: '900',
+  },
+  lobbySettingsArrow: {
+    color: '#ff3aa8',
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  lobbyLives: {
+    alignSelf: 'flex-end',
+    flexDirection: 'row',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#ff3aa8',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(5,4,8,0.9)',
+  },
+  lobbyHeart: {
+    color: colors.red,
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  lobbyHeartEmpty: {
+    color: '#5d2430',
+  },
+  lobbyPlayButton: {
+    position: 'absolute',
+    right: 24,
+    bottom: 16,
+    width: 300,
+    height: 64,
+    borderRadius: 8,
+    borderWidth: 3,
+    borderColor: '#fff0a4',
+    backgroundColor: colors.gold,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 18,
+  },
+  lobbyPlayText: {
+    color: '#17110a',
+    fontSize: 42,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  lobbyPlayWing: {
+    color: '#bb7110',
+    fontSize: 26,
+    fontWeight: '900',
+  },
+  lobbyCurrencyBar: {
+    position: 'absolute',
+    left: 352,
+    bottom: 18,
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,75,216,0.48)',
+    backgroundColor: 'rgba(5,4,8,0.72)',
+  },
+  lobbyCurrencyText: {
+    color: colors.gold,
+    fontSize: 14,
+    fontWeight: '900',
   },
   heroHideout: {
     height: 240,

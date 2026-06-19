@@ -42,6 +42,8 @@ import {
 
 const loadingHero = require('./assets/loading-hero.png');
 const menuHome = require('./assets/menu-home-sky-soft.png');
+const homeBossMale = require('./assets/home-boss-male.png');
+const homeBossFemale = require('./assets/home-boss-female.png');
 const loadingHeroAspectRatio = 1448 / 1086;
 const loadingHeroZoom = 1.12;
 
@@ -595,6 +597,20 @@ function HomeScreen({
             {filled ? '♥' : '♡'}
           </Text>
         ))}
+      </View>
+      <View pointerEvents="none" style={screenStyles.menuBossCard}>
+        <Text style={screenStyles.menuBossTitle}>BOSS</Text>
+        <View style={screenStyles.menuBossPortraitRow}>
+          <View style={screenStyles.menuBossPortraitWrap}>
+            <Image source={homeBossMale} resizeMode="cover" style={screenStyles.menuBossPortrait} />
+            <Text style={screenStyles.menuBossButton}>Equip</Text>
+          </View>
+          <View style={screenStyles.menuBossDivider} />
+          <View style={screenStyles.menuBossPortraitWrap}>
+            <Image source={homeBossFemale} resizeMode="cover" style={screenStyles.menuBossPortrait} />
+            <Text style={screenStyles.menuBossButton}>Unlock</Text>
+          </View>
+        </View>
       </View>
       <Text pointerEvents="none" style={screenStyles.menuLunaName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>
         {displayBodyguardName}
@@ -1351,17 +1367,17 @@ const screenStyles = StyleSheet.create({
   },
   menuNamePatch: {
     position: 'absolute',
-    left: '68.8%',
-    top: '1.9%',
-    width: '22%',
-    height: '6.2%',
+    left: '78.0%',
+    top: '2.2%',
+    width: '11.5%',
+    height: '4.3%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.gold,
+    backgroundColor: '#aacdf8',
   },
   menuNameText: {
     color: '#17110a',
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: '900',
     letterSpacing: 0,
     textAlign: 'center',
@@ -1387,18 +1403,18 @@ const screenStyles = StyleSheet.create({
   },
   menuLivesPatch: {
     position: 'absolute',
-    right: '1.8%',
-    top: '12.0%',
-    width: '19.6%',
-    height: '6.7%',
+    right: '1.1%',
+    top: '10.0%',
+    width: '17.0%',
+    height: '4.8%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 5,
   },
   menuLifeHeart: {
     color: colors.red,
-    fontSize: 25,
+    fontSize: 24,
     fontWeight: '900',
     includeFontPadding: false,
     textShadowColor: '#ffffff',
@@ -1411,8 +1427,8 @@ const screenStyles = StyleSheet.create({
   },
   menuLunaName: {
     position: 'absolute',
-    left: '54.4%',
-    top: '83.2%',
+    left: '54.2%',
+    top: '64.0%',
     maxWidth: '18%',
     color: '#fff4fb',
     fontSize: 15,
@@ -1425,10 +1441,76 @@ const screenStyles = StyleSheet.create({
     borderRadius: 4,
     letterSpacing: 0,
   },
+  menuBossCard: {
+    position: 'absolute',
+    right: '5.2%',
+    top: '15.3%',
+    width: '11.2%',
+    height: '17.1%',
+    borderWidth: 1,
+    borderColor: '#ff4bd8',
+    backgroundColor: 'rgba(8,4,10,0.74)',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  menuBossTitle: {
+    position: 'absolute',
+    top: 1,
+    left: '27%',
+    right: '27%',
+    zIndex: 2,
+    color: colors.text,
+    backgroundColor: 'rgba(138,18,113,0.72)',
+    borderWidth: 1,
+    borderColor: '#ff4bd8',
+    fontSize: 11,
+    fontWeight: '900',
+    textAlign: 'center',
+    includeFontPadding: false,
+    letterSpacing: 0,
+  },
+  menuBossPortraitRow: {
+    flex: 1,
+    flexDirection: 'row',
+    width: '100%',
+  },
+  menuBossPortraitWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 3,
+    overflow: 'hidden',
+  },
+  menuBossPortrait: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  menuBossDivider: {
+    width: 2,
+    backgroundColor: '#ff4bd8',
+    opacity: 0.85,
+    transform: [{ rotate: '18deg' }],
+  },
+  menuBossButton: {
+    color: colors.text,
+    backgroundColor: 'rgba(20,8,14,0.86)',
+    borderWidth: 1,
+    borderColor: '#ff4bd8',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    fontSize: 8,
+    fontWeight: '900',
+    includeFontPadding: false,
+  },
   menuQuickPanel: {
     position: 'absolute',
-    left: '60.3%',
-    top: '7.9%',
+    left: '73.8%',
+    top: '7.1%',
     width: '17.8%',
     minHeight: '19.6%',
     borderWidth: 1,
@@ -1532,10 +1614,10 @@ const screenStyles = StyleSheet.create({
   },
   menuTapMenu: {
     position: 'absolute',
-    left: '63.7%',
-    top: '2.0%',
-    width: '4.1%',
-    height: '5.8%',
+    left: '75.1%',
+    top: '1.8%',
+    width: '3.1%',
+    height: '5.0%',
   },
   menuTapSettings: {
     position: 'absolute',
@@ -1546,10 +1628,10 @@ const screenStyles = StyleSheet.create({
   },
   menuTapLogin: {
     position: 'absolute',
-    right: '1.8%',
-    top: '0.9%',
-    width: '5.6%',
-    height: '9.9%',
+    right: '1.0%',
+    top: '1.2%',
+    width: '4.3%',
+    height: '7.3%',
   },
   menuTapPlay: {
     position: 'absolute',

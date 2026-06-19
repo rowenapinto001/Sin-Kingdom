@@ -41,7 +41,7 @@ import {
 } from './src/game/progression';
 
 const loadingHero = require('./assets/loading-hero.png');
-const menuHome = require('./assets/menu-home-sky-soft.png');
+const menuHome = require('./assets/menu-home-reference.png');
 const homeBossMale = require('./assets/home-boss-male.png');
 const homeBossFemale = require('./assets/home-boss-female.png');
 const loadingHeroAspectRatio = 1448 / 1086;
@@ -1367,17 +1367,17 @@ const screenStyles = StyleSheet.create({
   },
   menuNamePatch: {
     position: 'absolute',
-    left: '78.0%',
-    top: '2.2%',
-    width: '11.5%',
-    height: '4.3%',
+    left: '68.8%',
+    top: '2.1%',
+    width: '22.0%',
+    height: '5.2%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#aacdf8',
   },
   menuNameText: {
     color: '#17110a',
-    fontSize: 16,
+    fontSize: 21,
     fontWeight: '900',
     letterSpacing: 0,
     textAlign: 'center',
@@ -1403,18 +1403,18 @@ const screenStyles = StyleSheet.create({
   },
   menuLivesPatch: {
     position: 'absolute',
-    right: '1.1%',
-    top: '10.0%',
-    width: '17.0%',
-    height: '4.8%',
+    right: '4.4%',
+    top: '10.2%',
+    width: '15.8%',
+    height: '5.1%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 6,
   },
   menuLifeHeart: {
     color: colors.red,
-    fontSize: 24,
+    fontSize: 21,
     fontWeight: '900',
     includeFontPadding: false,
     textShadowColor: '#ffffff',
@@ -1443,10 +1443,10 @@ const screenStyles = StyleSheet.create({
   },
   menuBossCard: {
     position: 'absolute',
-    right: '5.2%',
-    top: '15.3%',
-    width: '11.2%',
-    height: '17.1%',
+    right: '5.0%',
+    top: '17.7%',
+    width: '11.7%',
+    height: '17.0%',
     borderWidth: 1,
     borderColor: '#ff4bd8',
     backgroundColor: 'rgba(8,4,10,0.74)',

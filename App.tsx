@@ -41,7 +41,7 @@ import {
 } from './src/game/progression';
 
 const loadingHero = require('./assets/loading-hero.png');
-const menuHome = require('./assets/menu-home-clean.png');
+const menuHome = require('./assets/menu-home-sky-soft.png');
 const loadingHeroAspectRatio = 1448 / 1086;
 const loadingHeroZoom = 1.12;
 

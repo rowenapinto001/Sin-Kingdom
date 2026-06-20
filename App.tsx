@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Animated, Easing, Image, ImageBackground, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   allMissions,
@@ -44,6 +44,9 @@ const loadingHero = require('./assets/loading-hero.png');
 const menuHome = require('./assets/menu-home-reference.png');
 const homeBossMale = require('./assets/home-boss-male.png');
 const homeBossFemale = require('./assets/home-boss-female.png');
+const addaMansionBg = require('./assets/adda-mansion-bg.png');
+const lunaStairWalk = require('./assets/luna-stair-walk.png');
+const bossStairWalk = require('./assets/boss-stair-walk.png');
 const loadingHeroAspectRatio = 1448 / 1086;
 const loadingHeroZoom = 1.12;
 const homeRewardNames = [
@@ -82,6 +85,9 @@ const homeRewardColors = [
   '#3f2586',
   '#661b65',
 ];
+const addaStoryText =
+  'Protect the Boss, guide the Bodyguard, collect cash and gems, clear all 5 missions in a run, and escape rival guards/security. Training mode is practice only. Ranked modes improve your score, rank, rewards, and unlocks.\n\n' +
+  'The city of Sin Kingdom is ruled by power, loyalty, and betrayal. Luna Crown steps into the mansion as the chosen protector, while the Boss hides secrets that can change everything. Every mission will test trust, survival, and control of the underground empire.';
 
 type RunResult = {
   cashEarned: number;
@@ -191,7 +197,7 @@ export default function App() {
     setPoliceMeter(modeId === 'training' ? 0 : 10);
     setPlayerPoint({ x: 46, y: 58 });
     saveProfile(hydrated);
-    setScreen('gameplay');
+    setScreen('addaIntro');
   };
 
   const completeMission = () => {
@@ -491,6 +497,9 @@ export default function App() {
       {screen === 'profile' && (
         <ProfileScreen profile={profile} topStatus={topStatus} bossName={selectedBoss.name} bodyguardName={selectedBodyguard.name} onBack={() => setScreen('home')} />
       )}
+      {screen === 'addaIntro' && session && (
+        <AddaIntroScreen />
+      )}
       {screen === 'gameplay' && session && mission && (
         <GameplayScreen
           topStatus={topStatus}
@@ -567,6 +576,422 @@ function LoadingHeroArt({ liftLogo = false }: { liftLogo?: boolean }) {
   );
 }
 
+function AddaIntroScreen() {
+  const { width, height } = useWindowDimensions();
+  const introProgress = useRef(new Animated.Value(0)).current;
+  const openingProgress = useRef(new Animated.Value(0)).current;
+  const titleOpacity = useRef(new Animated.Value(1)).current;
+  const storyOpacity = useRef(new Animated.Value(0)).current;
+  const ambientPulse = useRef(new Animated.Value(0)).current;
+  const lunaStepCycle = useRef(new Animated.Value(1)).current;
+  const bossStepCycle = useRef(new Animated.Value(1)).current;
+  const walkStartedRef = useRef(false);
+  const lunaStepLoopRef = useRef<ReturnType<typeof Animated.loop> | null>(null);
+  const bossStepLoopRef = useRef<ReturnType<typeof Animated.loop> | null>(null);
+  const storyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const walkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bossStepDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [storyControlsEnabled, setStoryControlsEnabled] = useState(false);
+
+  const startWalkCycles = () => {
+    lunaStepLoopRef.current?.stop();
+    bossStepLoopRef.current?.stop();
+    if (bossStepDelayRef.current) clearTimeout(bossStepDelayRef.current);
+    lunaStepCycle.setValue(1);
+    bossStepCycle.setValue(1);
+    lunaStepLoopRef.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(lunaStepCycle, {
+          toValue: -1,
+          duration: 340,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(lunaStepCycle, {
+          toValue: 1,
+          duration: 340,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    lunaStepLoopRef.current.start();
+
+    bossStepDelayRef.current = setTimeout(() => {
+      bossStepLoopRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(bossStepCycle, {
+            toValue: -1,
+            duration: 430,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(bossStepCycle, {
+            toValue: 1,
+            duration: 430,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      bossStepLoopRef.current.start();
+    }, 850);
+  };
+
+  useEffect(() => {
+    const startWalking = () => {
+      if (walkStartedRef.current) return;
+      walkStartedRef.current = true;
+      if (storyTimerRef.current) clearTimeout(storyTimerRef.current);
+      if (walkTimerRef.current) clearTimeout(walkTimerRef.current);
+      setStoryControlsEnabled(false);
+      Animated.timing(storyOpacity, {
+        toValue: 0,
+        duration: 520,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+      startWalkCycles();
+      Animated.timing(introProgress, {
+        toValue: 1,
+        duration: 7200,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const ambientLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(ambientPulse, {
+          toValue: 1,
+          duration: 1900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(ambientPulse, {
+          toValue: 0,
+          duration: 1900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    ambientLoop.start();
+
+    Animated.parallel([
+      Animated.timing(openingProgress, {
+        toValue: 1,
+        duration: 10_000,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.delay(10_000),
+        Animated.timing(titleOpacity, {
+          toValue: 0,
+          duration: 1200,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+
+    storyTimerRef.current = setTimeout(() => {
+      setStoryControlsEnabled(true);
+      Animated.timing(storyOpacity, {
+        toValue: 1,
+        duration: 900,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+      walkTimerRef.current = setTimeout(startWalking, 12_500);
+    }, 11_250);
+
+    return () => {
+      ambientLoop.stop();
+      if (storyTimerRef.current) clearTimeout(storyTimerRef.current);
+      if (walkTimerRef.current) clearTimeout(walkTimerRef.current);
+      if (bossStepDelayRef.current) clearTimeout(bossStepDelayRef.current);
+      lunaStepLoopRef.current?.stop();
+      bossStepLoopRef.current?.stop();
+      introProgress.stopAnimation();
+      titleOpacity.stopAnimation();
+      storyOpacity.stopAnimation();
+      ambientPulse.stopAnimation();
+      openingProgress.stopAnimation();
+      lunaStepCycle.stopAnimation();
+      bossStepCycle.stopAnimation();
+    };
+  }, [ambientPulse, bossStepCycle, introProgress, lunaStepCycle, openingProgress, storyOpacity, titleOpacity]);
+
+  const skipStory = () => {
+    if (walkStartedRef.current) return;
+    walkStartedRef.current = true;
+    if (storyTimerRef.current) clearTimeout(storyTimerRef.current);
+    if (walkTimerRef.current) clearTimeout(walkTimerRef.current);
+    setStoryControlsEnabled(false);
+    Animated.timing(storyOpacity, {
+      toValue: 0,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+    startWalkCycles();
+    Animated.timing(introProgress, {
+      toValue: 1,
+      duration: 7200,
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const openingScale = openingProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1.02, 1.06],
+  });
+  const followScale = introProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.08],
+  });
+  const cameraScale = Animated.multiply(openingScale, followScale);
+  const cameraY = introProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -height * 0.09],
+  });
+  const backgroundX = introProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -width * 0.018],
+  });
+  const foregroundX = introProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, width * 0.05],
+  });
+  const lunaX = introProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, width * 0.04],
+  });
+  const lunaY = introProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -height * 0.18],
+  });
+  const lunaScale = introProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.7, 0.48],
+  });
+  const bossX = introProgress.interpolate({
+    inputRange: [0, 0.22, 1],
+    outputRange: [-width * 0.065, -width * 0.065, -width * 0.025],
+  });
+  const bossY = introProgress.interpolate({
+    inputRange: [0, 0.22, 1],
+    outputRange: [height * 0.03, height * 0.03, -height * 0.12],
+  });
+  const bossScale = introProgress.interpolate({
+    inputRange: [0, 0.22, 1],
+    outputRange: [0.68, 0.68, 0.46],
+  });
+  const walkBob = introProgress.interpolate({
+    inputRange: [0, 0.16, 0.32, 0.48, 0.64, 0.8, 1],
+    outputRange: [0, -5, 2, -5, 2, -4, 0],
+  });
+  const bossBob = introProgress.interpolate({
+    inputRange: [0, 0.24, 0.4, 0.56, 0.72, 0.88, 1],
+    outputRange: [0, 0, -4, 2, -4, 2, 0],
+  });
+  const lunaStepBounce = lunaStepCycle.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: [0, -6, 0],
+  });
+  const bossStepBounce = bossStepCycle.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: [0, -4, 0],
+  });
+  const lunaBodyLean = lunaStepCycle.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ['-2.2deg', '2.2deg'],
+  });
+  const bossBodyLean = bossStepCycle.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ['-1.4deg', '1.4deg'],
+  });
+  const lunaStrideAOpacity = lunaStepCycle.interpolate({
+    inputRange: [-1, -0.2, 0.2, 1],
+    outputRange: [0.05, 0.16, 0.9, 1],
+  });
+  const lunaStrideBOpacity = lunaStepCycle.interpolate({
+    inputRange: [-1, -0.2, 0.2, 1],
+    outputRange: [1, 0.9, 0.16, 0.05],
+  });
+  const bossStrideAOpacity = bossStepCycle.interpolate({
+    inputRange: [-1, -0.2, 0.2, 1],
+    outputRange: [0.05, 0.16, 0.9, 1],
+  });
+  const bossStrideBOpacity = bossStepCycle.interpolate({
+    inputRange: [-1, -0.2, 0.2, 1],
+    outputRange: [1, 0.9, 0.16, 0.05],
+  });
+  const lunaFrameSway = lunaStepCycle.interpolate({
+    inputRange: [-1, 1],
+    outputRange: [-2.5, 2.5],
+  });
+  const bossFrameSway = bossStepCycle.interpolate({
+    inputRange: [-1, 1],
+    outputRange: [-1.8, 1.8],
+  });
+  const lunaShadowShift = lunaStepCycle.interpolate({
+    inputRange: [-1, 1],
+    outputRange: [-5, 5],
+  });
+  const bossShadowShift = bossStepCycle.interpolate({
+    inputRange: [-1, 1],
+    outputRange: [-4, 4],
+  });
+  const lunaShadowScale = introProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.62],
+  });
+  const bossShadowScale = introProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.7],
+  });
+  const glowOpacity = ambientPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.22, 0.44],
+  });
+
+  return (
+    <View style={screenStyles.addaRoot}>
+      <StatusBar hidden />
+      <Animated.View
+        style={[
+          screenStyles.addaCamera,
+          {
+            transform: [{ translateX: backgroundX }, { translateY: cameraY }, { scale: cameraScale }],
+          },
+        ]}
+      >
+        <ImageBackground source={addaMansionBg} resizeMode="cover" style={screenStyles.addaBackgroundLayer}>
+          <Animated.View style={[screenStyles.addaWindowGlow, { opacity: glowOpacity }]} />
+          <Animated.View style={[screenStyles.addaSkyWash, { opacity: glowOpacity }]} />
+        </ImageBackground>
+      </Animated.View>
+
+      <Animated.View style={[screenStyles.addaForegroundLayer, { transform: [{ translateX: foregroundX }] }]}>
+        <View style={screenStyles.addaGardenLeft} />
+        <View style={screenStyles.addaGardenRight} />
+        <View style={screenStyles.addaPathGlow} />
+      </Animated.View>
+
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          screenStyles.addaBossActor,
+          {
+            transform: [
+              { translateX: bossX },
+              { translateY: bossY },
+              { translateY: bossBob },
+              { translateY: bossStepBounce },
+              { rotateZ: bossBodyLean },
+              { scale: bossScale },
+            ],
+          },
+        ]}
+      >
+        <Animated.View
+          style={[
+            screenStyles.addaActorShadow,
+            {
+              transform: [{ translateX: bossShadowShift }, { scaleX: bossShadowScale }],
+            },
+          ]}
+        />
+        <Animated.Image
+          source={bossStairWalk}
+          resizeMode="contain"
+          style={[screenStyles.addaBossImage, { opacity: bossStrideAOpacity, transform: [{ translateX: bossFrameSway }] }]}
+        />
+        <Animated.Image
+          source={bossStairWalk}
+          resizeMode="contain"
+          style={[
+            screenStyles.addaBossImage,
+            {
+              opacity: bossStrideBOpacity,
+              transform: [{ scaleX: -1 }, { translateX: Animated.multiply(bossFrameSway, -1) }],
+            },
+          ]}
+        />
+      </Animated.View>
+
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          screenStyles.addaLunaActor,
+          {
+            transform: [
+              { translateX: lunaX },
+              { translateY: lunaY },
+              { translateY: walkBob },
+              { translateY: lunaStepBounce },
+              { rotateZ: lunaBodyLean },
+              { scale: lunaScale },
+            ],
+          },
+        ]}
+      >
+        <Animated.View
+          style={[
+            screenStyles.addaActorShadow,
+            {
+              transform: [{ translateX: lunaShadowShift }, { scaleX: lunaShadowScale }],
+            },
+          ]}
+        />
+        <Animated.Image
+          source={lunaStairWalk}
+          resizeMode="contain"
+          style={[screenStyles.addaLunaImage, { opacity: lunaStrideAOpacity, transform: [{ translateX: lunaFrameSway }] }]}
+        />
+        <Animated.Image
+          source={lunaStairWalk}
+          resizeMode="contain"
+          style={[
+            screenStyles.addaLunaImage,
+            {
+              opacity: lunaStrideBOpacity,
+              transform: [{ scaleX: -1 }, { translateX: Animated.multiply(lunaFrameSway, -1) }],
+            },
+          ]}
+        />
+      </Animated.View>
+
+      <Animated.View pointerEvents="none" style={[screenStyles.addaTitleWrap, { opacity: titleOpacity }]}>
+        <Text style={screenStyles.addaTitle}>Apun Ka Adda</Text>
+      </Animated.View>
+
+      <Animated.Image
+        source={addaMansionBg}
+        blurRadius={3}
+        resizeMode="cover"
+        style={[screenStyles.addaStoryBlur, { opacity: storyOpacity }]}
+      />
+      <Animated.View pointerEvents="none" style={[screenStyles.addaStoryShade, { opacity: storyOpacity }]} />
+      <Animated.View
+        pointerEvents={storyControlsEnabled ? 'auto' : 'none'}
+        style={[screenStyles.addaSkipWrap, { opacity: storyOpacity }]}
+      >
+        <Pressable style={screenStyles.addaSkipButton} onPress={skipStory}>
+          <Text style={screenStyles.addaSkipText}>SKIP</Text>
+        </Pressable>
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[screenStyles.addaStoryPanel, { opacity: storyOpacity }]}>
+        <Text style={screenStyles.addaStoryText}>{addaStoryText}</Text>
+      </Animated.View>
+    </View>
+  );
+}
+
 function TopStatus({ cash, gems, lives, nextLife, rank }: { cash: number; gems: number; lives: number; nextLife: string; rank: string }) {
   return (
     <View style={screenStyles.statusRow}>
@@ -574,6 +999,16 @@ function TopStatus({ cash, gems, lives, nextLife, rank }: { cash: number; gems: 
       <StatPill label="Gems" value={gems} tone="purple" />
       <StatPill label={`Life ${nextLife}`} value={`${lives}/5`} tone="red" />
       <StatPill label="Rank" value={rank} tone="blue" />
+    </View>
+  );
+}
+
+function MenuHeart({ filled }: { filled: boolean }) {
+  return (
+    <View style={screenStyles.menuHeartBox}>
+      <View style={[screenStyles.menuHeartBase, !filled && screenStyles.menuHeartEmpty]} />
+      <View style={[screenStyles.menuHeartRoundLeft, !filled && screenStyles.menuHeartEmpty]} />
+      <View style={[screenStyles.menuHeartRoundRight, !filled && screenStyles.menuHeartEmpty]} />
     </View>
   );
 }
@@ -602,7 +1037,7 @@ function HomeScreen({
   const rankNumber = profile.leaderboardScore <= 0 ? 0 : profile.rankNumber;
   const rankLabel = profile.leaderboardScore <= 0 ? '---' : rankClassForRank(profile.rankNumber).toUpperCase();
   const displayBodyguardName = profile.selectedBodyguardId === 'jake-stone' ? 'LUNA CROWN' : bodyguardName.toUpperCase();
-  const lives = Array.from({ length: profile.lifeSystem.maxLives }, (_, index) => index < profile.lifeSystem.lives);
+  const lives = Array.from({ length: 5 }, (_, index) => index < Math.min(profile.lifeSystem.lives, 5));
 
   const showHelp = () => {
     Alert.alert(
@@ -619,6 +1054,7 @@ function HomeScreen({
       <View pointerEvents="none" style={screenStyles.menuRankPatch}>
         <Text style={screenStyles.menuRankTop}>{rankNumber}</Text>
       </View>
+      <View pointerEvents="none" style={screenStyles.menuRankHeaderCover} />
       <View pointerEvents="none" style={screenStyles.menuNamePatch}>
         <Text style={screenStyles.menuNameText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.45}>
           {playerName.toUpperCase()}
@@ -627,8 +1063,9 @@ function HomeScreen({
       <View pointerEvents="none" style={screenStyles.menuRankLabelPatch}>
         <Text style={screenStyles.menuRankLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>{rankLabel}</Text>
       </View>
+      <View pointerEvents="none" style={screenStyles.menuLegacyMapsCover} />
       <View pointerEvents="none" style={screenStyles.menuRewardPanel}>
-        <Text style={screenStyles.menuRewardTitle}>NEXT REWARD</Text>
+        <Text style={screenStyles.menuRewardTitle}>MAPS</Text>
         <View style={screenStyles.menuRewardGrid}>
           {homeRewardNames.map((name, index) => (
             <View key={name} style={screenStyles.menuRewardCard}>
@@ -651,9 +1088,7 @@ function HomeScreen({
       </View>
       <View pointerEvents="none" style={screenStyles.menuLivesPatch}>
         {lives.map((filled, index) => (
-          <Text key={index} style={[screenStyles.menuLifeHeart, !filled && screenStyles.menuLifeHeartEmpty]}>
-            {filled ? '♥' : '♡'}
-          </Text>
+          <MenuHeart key={index} filled={filled} />
         ))}
       </View>
       <View pointerEvents="none" style={screenStyles.menuBossCard}>
@@ -703,7 +1138,11 @@ function HomeScreen({
       <Pressable onPress={() => onNavigate('bodyguards')} style={screenStyles.menuTapCharacters} />
       <Pressable onPress={() => onNavigate('leaderboard')} style={screenStyles.menuTapRank} />
       <Pressable onPress={() => onNavigate('daily')} style={screenStyles.menuTapRewards} />
-      <Pressable onPress={() => setMenuOpen((open) => !open)} style={screenStyles.menuTapMenu} />
+      <Pressable onPress={() => setMenuOpen((open) => !open)} style={screenStyles.menuTapMenu}>
+        <View style={screenStyles.menuIconLine} />
+        <View style={screenStyles.menuIconLine} />
+        <View style={screenStyles.menuIconLine} />
+      </Pressable>
       <Pressable onPress={() => onNavigate('profile')} style={screenStyles.menuTapLogin} />
       <Pressable onPress={onPlay} style={screenStyles.menuTapPlay} />
     </View>
@@ -1220,6 +1659,237 @@ const screenStyles = StyleSheet.create({
     backgroundColor: colors.bg,
     overflow: 'hidden',
   },
+  addaRoot: {
+    flex: 1,
+    backgroundColor: '#05000b',
+    overflow: 'hidden',
+  },
+  addaCamera: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 0,
+    elevation: 0,
+  },
+  addaBackgroundLayer: {
+    flex: 1,
+  },
+  addaWindowGlow: {
+    position: 'absolute',
+    left: '35%',
+    top: '22%',
+    width: '30%',
+    height: '35%',
+    borderRadius: 120,
+    backgroundColor: 'rgba(255,183,74,0.44)',
+    transform: [{ scaleX: 1.35 }],
+  },
+  addaSkyWash: {
+    position: 'absolute',
+    left: '-5%',
+    right: '-5%',
+    top: 0,
+    height: '42%',
+    backgroundColor: 'rgba(255,45,195,0.24)',
+  },
+  addaForegroundLayer: {
+    position: 'absolute',
+    left: '-4%',
+    right: '-4%',
+    bottom: 0,
+    height: '32%',
+  },
+  addaGardenLeft: {
+    position: 'absolute',
+    left: 0,
+    bottom: 0,
+    width: '31%',
+    height: '76%',
+    borderTopRightRadius: 110,
+    backgroundColor: 'rgba(5,18,11,0.64)',
+    borderRightWidth: 1,
+    borderColor: 'rgba(255,54,218,0.24)',
+  },
+  addaGardenRight: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: '31%',
+    height: '76%',
+    borderTopLeftRadius: 110,
+    backgroundColor: 'rgba(5,18,11,0.64)',
+    borderLeftWidth: 1,
+    borderColor: 'rgba(255,54,218,0.24)',
+  },
+  addaPathGlow: {
+    position: 'absolute',
+    left: '34%',
+    right: '34%',
+    bottom: '-3%',
+    height: '106%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: 'rgba(255,177,76,0.13)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,128,0.22)',
+  },
+  addaTitleWrap: {
+    position: 'absolute',
+    top: '4.5%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 100,
+    elevation: 100,
+  },
+  addaTitle: {
+    color: '#fff8e7',
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: 0,
+    textAlign: 'center',
+    textShadowColor: '#ff36c6',
+    textShadowRadius: 18,
+    backgroundColor: 'rgba(10,2,12,0.18)',
+    paddingHorizontal: 22,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,196,83,0.42)',
+    includeFontPadding: false,
+  },
+  addaStoryBlur: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 20,
+    elevation: 20,
+  },
+  addaStoryShade: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(5,0,10,0.42)',
+    zIndex: 21,
+    elevation: 21,
+  },
+  addaSkipWrap: {
+    position: 'absolute',
+    top: 16,
+    right: 18,
+    zIndex: 35,
+    elevation: 35,
+  },
+  addaSkipButton: {
+    minWidth: 74,
+    height: 36,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+    backgroundColor: 'rgba(23,0,39,0.84)',
+    borderWidth: 1,
+    borderColor: '#ff49d8',
+    shadowColor: '#ff35d2',
+    shadowOpacity: 0.85,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  addaSkipText: {
+    color: '#fff7ff',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0,
+    textShadowColor: '#ff35d2',
+    textShadowRadius: 8,
+    includeFontPadding: false,
+  },
+  addaStoryPanel: {
+    position: 'absolute',
+    left: '8%',
+    right: '8%',
+    bottom: '7%',
+    paddingHorizontal: 22,
+    paddingVertical: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(10,3,18,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,62,220,0.72)',
+    shadowColor: '#ff35d2',
+    shadowOpacity: 0.75,
+    shadowRadius: 18,
+    zIndex: 32,
+    elevation: 32,
+  },
+  addaStoryText: {
+    color: '#fff8ff',
+    fontSize: 17,
+    lineHeight: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    textShadowColor: '#7d22ff',
+    textShadowRadius: 8,
+    includeFontPadding: false,
+  },
+  addaLunaActor: {
+    position: 'absolute',
+    left: '44.6%',
+    bottom: '-4%',
+    width: '17%',
+    height: '78%',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    zIndex: 8,
+    elevation: 8,
+  },
+  addaLunaImage: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 2,
+  },
+  addaBossActor: {
+    position: 'absolute',
+    left: '34.0%',
+    bottom: '-3%',
+    width: '15%',
+    height: '74%',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    opacity: 0.96,
+    zIndex: 7,
+    elevation: 7,
+  },
+  addaBossImage: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 2,
+  },
+  addaActorShadow: {
+    position: 'absolute',
+    left: '23%',
+    right: '23%',
+    bottom: '2%',
+    height: 16,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,88,220,0.16)',
+    zIndex: 1,
+  },
   wholeHeroStage: {
     flex: 1,
     alignItems: 'center',
@@ -1426,10 +2096,10 @@ const screenStyles = StyleSheet.create({
   },
   menuNamePatch: {
     position: 'absolute',
-    left: '81.8%',
-    top: '2.2%',
-    width: '10.4%',
-    height: '4.3%',
+    left: '82.4%',
+    top: '2.1%',
+    width: '9.8%',
+    height: '4.0%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#aacdf8',
@@ -1441,6 +2111,14 @@ const screenStyles = StyleSheet.create({
     letterSpacing: 0,
     textAlign: 'center',
     includeFontPadding: false,
+  },
+  menuRankHeaderCover: {
+    position: 'absolute',
+    left: '9.7%',
+    top: '56.8%',
+    width: '16.6%',
+    height: '5.4%',
+    backgroundColor: '#050307',
   },
   menuRankLabelPatch: {
     position: 'absolute',
@@ -1460,16 +2138,24 @@ const screenStyles = StyleSheet.create({
     textAlign: 'center',
     includeFontPadding: false,
   },
+  menuLegacyMapsCover: {
+    position: 'absolute',
+    left: '0.8%',
+    top: '71.9%',
+    width: '35.2%',
+    height: '26.2%',
+    backgroundColor: '#050307',
+  },
   menuRewardPanel: {
     position: 'absolute',
     left: '0.9%',
-    top: '62.4%',
-    width: '30.5%',
+    top: '61.9%',
+    width: '31.0%',
     height: '35.6%',
     borderWidth: 1,
     borderColor: '#ff4bd8',
     borderRadius: 3,
-    backgroundColor: 'rgba(3,3,7,0.94)',
+    backgroundColor: '#050307',
     paddingHorizontal: 6,
     paddingTop: 17,
     paddingBottom: 5,
@@ -1477,8 +2163,8 @@ const screenStyles = StyleSheet.create({
   menuRewardTitle: {
     position: 'absolute',
     top: -1,
-    left: 58,
-    right: 58,
+    left: 72,
+    right: 72,
     color: colors.text,
     fontSize: 12,
     fontWeight: '900',
@@ -1544,25 +2230,49 @@ const screenStyles = StyleSheet.create({
     position: 'absolute',
     right: '2.0%',
     top: '9.9%',
-    width: '16.9%',
+    width: '16.2%',
     height: '5.3%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 7,
   },
-  menuLifeHeart: {
-    color: colors.red,
-    fontSize: 24,
-    fontWeight: '900',
-    includeFontPadding: false,
-    textShadowColor: '#ffffff',
-    textShadowRadius: 1.5,
+  menuHeartBox: {
+    width: 25,
+    height: 24,
   },
-  menuLifeHeartEmpty: {
-    color: '#2b1118',
-    textShadowColor: '#ff3a4f',
-    textShadowRadius: 1,
+  menuHeartBase: {
+    position: 'absolute',
+    left: 6,
+    top: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 3,
+    backgroundColor: '#ff302e',
+    transform: [{ rotate: '45deg' }],
+  },
+  menuHeartRoundLeft: {
+    position: 'absolute',
+    left: 1,
+    top: 7,
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    backgroundColor: '#ff302e',
+  },
+  menuHeartRoundRight: {
+    position: 'absolute',
+    left: 9,
+    top: 1,
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    backgroundColor: '#ff302e',
+  },
+  menuHeartEmpty: {
+    backgroundColor: '#210b12',
+    borderWidth: 1,
+    borderColor: '#ff394b',
   },
   menuLunaName: {
     position: 'absolute',
@@ -1622,17 +2332,19 @@ const screenStyles = StyleSheet.create({
   },
   menuBossSlash: {
     position: 'absolute',
-    left: '48%',
-    top: '12%',
-    width: 4,
-    height: '72%',
+    left: '48.0%',
+    top: '8%',
+    width: 6,
+    height: '84%',
     zIndex: 3,
     borderRadius: 6,
-    backgroundColor: '#fff2ff',
+    backgroundColor: '#fffaff',
+    borderWidth: 1,
+    borderColor: '#ff1fd2',
     shadowColor: '#ff4bd8',
     shadowOpacity: 1,
-    shadowRadius: 8,
-    transform: [{ rotate: '20deg' }],
+    shadowRadius: 11,
+    transform: [{ rotate: '18deg' }],
   },
   menuBossPortrait: {
     position: 'absolute',
@@ -1644,14 +2356,14 @@ const screenStyles = StyleSheet.create({
     height: '100%',
   },
   menuBossDivider: {
-    width: 2,
+    width: 0,
     backgroundColor: '#ff4bd8',
     opacity: 0.85,
     transform: [{ rotate: '18deg' }],
   },
   menuBossButton: {
     color: colors.text,
-    backgroundColor: 'rgba(20,8,14,0.86)',
+    backgroundColor: 'rgba(20,8,14,0.94)',
     borderWidth: 1,
     borderColor: '#ff4bd8',
     paddingHorizontal: 4,
@@ -1659,6 +2371,7 @@ const screenStyles = StyleSheet.create({
     fontSize: 8.5,
     fontWeight: '900',
     includeFontPadding: false,
+    zIndex: 5,
   },
   menuQuickPanel: {
     position: 'absolute',
@@ -1761,16 +2474,27 @@ const screenStyles = StyleSheet.create({
   menuTapRewards: {
     position: 'absolute',
     left: '0.9%',
-    top: '74.1%',
-    width: '34.4%',
-    height: '24.0%',
+    top: '61.9%',
+    width: '31.0%',
+    height: '35.6%',
   },
   menuTapMenu: {
     position: 'absolute',
-    left: '75.1%',
-    top: '1.8%',
-    width: '3.1%',
-    height: '5.0%',
+    left: '79.2%',
+    top: '2.0%',
+    width: '2.5%',
+    height: '4.8%',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 3,
+  },
+  menuIconLine: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.text,
+    shadowColor: '#ff7ee6',
+    shadowOpacity: 0.9,
+    shadowRadius: 3,
   },
   menuTapSettings: {
     position: 'absolute',

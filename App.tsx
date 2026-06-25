@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Easing, Image, ImageBackground, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, Dimensions, Easing, Image, ImageBackground, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   allMissions,
@@ -49,6 +49,7 @@ const lunaStairWalk = require('./assets/luna-stair-walk.png');
 const bossStairWalk = require('./assets/boss-stair-walk.png');
 const loadingHeroAspectRatio = 1448 / 1086;
 const loadingHeroZoom = 1.12;
+const menuHomeAspectRatio = 1672 / 941;
 const homeRewardNames = [
   'Downtown',
   'Harbor',
@@ -101,7 +102,7 @@ type RunResult = {
 
 export default function App() {
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
-  const [screen, setScreen] = useState<ScreenName>('splash');
+  const [screen, setScreen] = useState<ScreenName>('loading');
   const [selectedModeId, setSelectedModeId] = useState<ModeId>('train');
   const [session, setSession] = useState<GameSession | null>(null);
   const [missionResult, setMissionResult] = useState<RewardResult | null>(null);
@@ -114,14 +115,6 @@ export default function App() {
   useEffect(() => {
     localSaveAdapter.loadProfile().then(setProfile);
   }, []);
-
-  useEffect(() => {
-    if (screen === 'splash') {
-      const timeout = setTimeout(() => setScreen('loading'), 3200);
-      return () => clearTimeout(timeout);
-    }
-    return undefined;
-  }, [screen]);
 
   useEffect(() => {
     if (screen !== 'loading') return undefined;
@@ -539,6 +532,11 @@ function SplashScreen() {
     <View style={screenStyles.fullscreenRoot}>
       <StatusBar hidden />
       <LoadingHeroArt liftLogo />
+      <View style={screenStyles.loadingHud}>
+        <View style={screenStyles.loadingHudTrack}>
+          <View style={[screenStyles.loadingHudFill, { width: '14%' }]} />
+        </View>
+      </View>
     </View>
   );
 }
@@ -1033,6 +1031,15 @@ function HomeScreen({
   onCycleLanguage: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const liveWindow = useWindowDimensions();
+  const staticWindow = Dimensions.get('window');
+  const windowWidth = liveWindow.width || staticWindow.width;
+  const windowHeight = liveWindow.height || staticWindow.height;
+  const isLandscape = windowWidth >= windowHeight;
+  const landscapeWidth = Math.max(windowWidth, windowHeight);
+  const landscapeHeight = Math.min(windowWidth, windowHeight);
+  const stageWidth = Math.min(landscapeWidth, landscapeHeight * menuHomeAspectRatio);
+  const stageHeight = stageWidth / menuHomeAspectRatio;
   const playerName = profile.playerName || bodyguardName;
   const rankNumber = profile.leaderboardScore <= 0 ? 0 : profile.rankNumber;
   const rankLabel = profile.leaderboardScore <= 0 ? '---' : rankClassForRank(profile.rankNumber).toUpperCase();
@@ -1049,7 +1056,16 @@ function HomeScreen({
   return (
     <View style={screenStyles.menuHomeRoot}>
       <StatusBar hidden />
-      <Image source={menuHome} resizeMode="stretch" style={screenStyles.menuHomeImage} />
+      <Image source={menuHome} resizeMode="cover" style={screenStyles.menuHomeBackdropImage} />
+      <View pointerEvents="none" style={screenStyles.menuHomeBackdropShade} />
+      <View
+        style={[
+          screenStyles.menuHomeStage,
+          { width: stageWidth, height: stageHeight },
+          !isLandscape && screenStyles.menuHomeStageRotated,
+        ]}
+      >
+      <Image source={menuHome} resizeMode="cover" style={screenStyles.menuHomeImage} />
 
       <View pointerEvents="none" style={screenStyles.menuRankPatch}>
         <Text style={screenStyles.menuRankTop}>{rankNumber}</Text>
@@ -1145,6 +1161,7 @@ function HomeScreen({
       </Pressable>
       <Pressable onPress={() => onNavigate('profile')} style={screenStyles.menuTapLogin} />
       <Pressable onPress={onPlay} style={screenStyles.menuTapPlay} />
+      </View>
     </View>
   );
 }
@@ -1956,7 +1973,7 @@ const screenStyles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingHudTrack: {
-    width: 205,
+    width: 260,
     height: 10,
     borderRadius: 9,
     backgroundColor: 'transparent',
@@ -2066,8 +2083,36 @@ const screenStyles = StyleSheet.create({
   },
   menuHomeRoot: {
     flex: 1,
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#06020a',
     overflow: 'hidden',
+  },
+  menuHomeStage: {
+    backgroundColor: '#06020a',
+    overflow: 'hidden',
+  },
+  menuHomeStageRotated: {
+    transform: [{ rotate: '90deg' }],
+  },
+  menuHomeBackdropImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    opacity: 0.16,
+  },
+  menuHomeBackdropShade: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#050207',
+    opacity: 0.58,
   },
   menuHomeImage: {
     position: 'absolute',

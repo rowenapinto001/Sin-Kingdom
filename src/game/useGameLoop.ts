@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
+import { getCharacterConfig } from '../data/characterConfigs';
 import { Direction, GameBounds, PlayerState } from './types';
 
-const PLAYER_SIZE = 32;
-const PLAYER_SPEED = 120;
-const FRAME_DURATION_MS = 120;
+const PLAYER_CHARACTER_ID = 'arcadePlayer';
+const playerConfig = getCharacterConfig(PLAYER_CHARACTER_ID);
+const PLAYER_WIDTH = playerConfig.sheet.frameWidth * playerConfig.scale;
+const PLAYER_HEIGHT = playerConfig.sheet.frameHeight * playerConfig.scale;
+const PLAYER_SPEED = playerConfig.speed;
+const FRAME_DURATION_MS = playerConfig.animationSpeedMs;
 
 const initialPlayer: PlayerState = {
+  characterId: PLAYER_CHARACTER_ID,
   x: 120,
   y: 120,
   direction: 'down',
@@ -57,16 +62,16 @@ export function useGameLoop(activeDirections: Direction[], bounds: GameBounds) {
       didPlaceInitialPlayerRef.current = true;
       const centeredPlayer = {
         ...playerRef.current,
-        x: Math.max(0, (bounds.width - PLAYER_SIZE) / 2),
-        y: Math.max(0, (bounds.height - PLAYER_SIZE) / 2),
+        x: Math.max(0, (bounds.width - PLAYER_WIDTH) / 2),
+        y: Math.max(0, (bounds.height - PLAYER_HEIGHT) / 2),
       };
       playerRef.current = centeredPlayer;
       setPlayer(centeredPlayer);
       return;
     }
 
-    const maxX = Math.max(0, bounds.width - PLAYER_SIZE);
-    const maxY = Math.max(0, bounds.height - PLAYER_SIZE);
+    const maxX = Math.max(0, bounds.width - PLAYER_WIDTH);
+    const maxY = Math.max(0, bounds.height - PLAYER_HEIGHT);
     const clampedPlayer = {
       ...playerRef.current,
       x: clamp(playerRef.current.x, 0, maxX),
@@ -102,8 +107,8 @@ export function useGameLoop(activeDirections: Direction[], bounds: GameBounds) {
         nextY += normalizedY * PLAYER_SPEED * deltaSeconds;
       }
 
-      const maxX = Math.max(0, boundsRef.current.width - PLAYER_SIZE);
-      const maxY = Math.max(0, boundsRef.current.height - PLAYER_SIZE);
+      const maxX = Math.max(0, boundsRef.current.width - PLAYER_WIDTH);
+      const maxY = Math.max(0, boundsRef.current.height - PLAYER_HEIGHT);
       nextX = clamp(nextX, 0, maxX);
       nextY = clamp(nextY, 0, maxY);
 
@@ -121,6 +126,7 @@ export function useGameLoop(activeDirections: Direction[], bounds: GameBounds) {
       }
 
       const nextPlayer: PlayerState = {
+        characterId: current.characterId,
         x: nextX,
         y: nextY,
         direction,

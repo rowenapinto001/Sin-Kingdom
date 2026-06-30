@@ -21,8 +21,11 @@ import {
   weapons,
 } from './src/data/gameData';
 import { GameSession, Mission, ModeId, PlayerProfile, RewardResult, ScreenName } from './src/data/types';
+import AnimatedCharacter from './src/components/AnimatedCharacter';
 import { Card, colors, EmptyState, GameButton, Meter, ProgressTracker, Screen, SectionTitle, StatPill } from './src/components/Ui';
 import { localSaveAdapter } from './src/storage/saveService';
+import { Direction } from './src/game/types';
+import MainWorldMap from './src/world/MainWorldMap';
 import {
   applyMissionComplete,
   applyRunComplete,
@@ -100,6 +103,27 @@ type RunResult = {
   bodyguardHealth: number;
 };
 
+function directionFromMoveDelta(dx: number, dy: number, fallback: Direction): Direction {
+  if (dx === 0 && dy === 0) return fallback;
+  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'right' : 'left';
+  return dy > 0 ? 'down' : 'up';
+}
+
+function characterIdFromName(name: string, fallback: string) {
+  const normalized = name.toLowerCase();
+  if (normalized.includes('victor')) return 'victorKane';
+  if (normalized.includes('selena')) return 'selenaVoss';
+  if (normalized.includes('luna')) return 'lunaCrown';
+  if (normalized.includes('ace')) return 'aceRyder';
+  if (normalized.includes('blaze')) return 'blazeKnight';
+  if (normalized.includes('mira')) return 'miraStorm';
+  if (normalized.includes('nova')) return 'novaShade';
+  if (normalized.includes('rex')) return 'rexStone';
+  if (normalized.includes('titan')) return 'titanWolf';
+  if (normalized.includes('zara')) return 'zaraFlame';
+  return fallback;
+}
+
 export default function App() {
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [screen, setScreen] = useState<ScreenName>('loading');
@@ -111,6 +135,8 @@ export default function App() {
   const [alertMeter, setAlertMeter] = useState(18);
   const [policeMeter, setPoliceMeter] = useState(10);
   const [playerPoint, setPlayerPoint] = useState({ x: 46, y: 58 });
+  const [gameplayDirection, setGameplayDirection] = useState<Direction>('down');
+  const [gameplayMoveTick, setGameplayMoveTick] = useState(0);
 
   useEffect(() => {
     localSaveAdapter.loadProfile().then(setProfile);
@@ -189,6 +215,8 @@ export default function App() {
     setAlertMeter(modeId === 'training' ? 4 : 18);
     setPoliceMeter(modeId === 'training' ? 0 : 10);
     setPlayerPoint({ x: 46, y: 58 });
+    setGameplayDirection('down');
+    setGameplayMoveTick(0);
     saveProfile(hydrated);
     setScreen('addaIntro');
   };
@@ -279,6 +307,8 @@ export default function App() {
 
   const movePlayer = (dx: number, dy: number) => {
     if (!session) return;
+    setGameplayDirection((current) => directionFromMoveDelta(dx, dy, current));
+    setGameplayMoveTick((value) => value + 1);
     const nextPoint = {
       x: Math.max(8, Math.min(86, playerPoint.x + dx)),
       y: Math.max(14, Math.min(78, playerPoint.y + dy)),
@@ -491,7 +521,10 @@ export default function App() {
         <ProfileScreen profile={profile} topStatus={topStatus} bossName={selectedBoss.name} bodyguardName={selectedBodyguard.name} onBack={() => setScreen('home')} />
       )}
       {screen === 'addaIntro' && session && (
-        <AddaIntroScreen />
+        <AddaIntroScreen onComplete={() => setScreen('world')} />
+      )}
+      {screen === 'world' && session && (
+        <MainWorldMap onStartMission={() => setScreen('gameplay')} onBackToHideout={goHome} />
       )}
       {screen === 'gameplay' && session && mission && (
         <GameplayScreen
@@ -507,6 +540,8 @@ export default function App() {
           alertMeter={alertMeter}
           policeMeter={policeMeter}
           playerPoint={playerPoint}
+          playerDirection={gameplayDirection}
+          moveTick={gameplayMoveTick}
           onMove={movePlayer}
           onAction={performAction}
           onComplete={completeMission}
@@ -574,7 +609,7 @@ function LoadingHeroArt({ liftLogo = false }: { liftLogo?: boolean }) {
   );
 }
 
-function AddaIntroScreen() {
+function AddaIntroScreen({ onComplete }: { onComplete: () => void }) {
   const { width, height } = useWindowDimensions();
   const introProgress = useRef(new Animated.Value(0)).current;
   const openingProgress = useRef(new Animated.Value(0)).current;
@@ -588,8 +623,21 @@ function AddaIntroScreen() {
   const bossStepLoopRef = useRef<ReturnType<typeof Animated.loop> | null>(null);
   const storyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const walkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bossStepDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onCompleteRef = useRef(onComplete);
+  const didCompleteRef = useRef(false);
   const [storyControlsEnabled, setStoryControlsEnabled] = useState(false);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  const finishIntro = () => {
+    if (didCompleteRef.current) return;
+    didCompleteRef.current = true;
+    onCompleteRef.current();
+  };
 
   const startWalkCycles = () => {
     lunaStepLoopRef.current?.stop();
@@ -655,7 +703,10 @@ function AddaIntroScreen() {
         duration: 7200,
         easing: Easing.inOut(Easing.cubic),
         useNativeDriver: true,
-      }).start();
+      }).start(({ finished }) => {
+        if (finished) finishIntro();
+      });
+      completeTimerRef.current = setTimeout(finishIntro, 7600);
     };
 
     const ambientLoop = Animated.loop(
@@ -702,13 +753,14 @@ function AddaIntroScreen() {
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
-      walkTimerRef.current = setTimeout(startWalking, 12_500);
+      walkTimerRef.current = setTimeout(startWalking, 4_500);
     }, 11_250);
 
     return () => {
       ambientLoop.stop();
       if (storyTimerRef.current) clearTimeout(storyTimerRef.current);
       if (walkTimerRef.current) clearTimeout(walkTimerRef.current);
+      if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
       if (bossStepDelayRef.current) clearTimeout(bossStepDelayRef.current);
       lunaStepLoopRef.current?.stop();
       bossStepLoopRef.current?.stop();
@@ -727,6 +779,7 @@ function AddaIntroScreen() {
     walkStartedRef.current = true;
     if (storyTimerRef.current) clearTimeout(storyTimerRef.current);
     if (walkTimerRef.current) clearTimeout(walkTimerRef.current);
+    if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
     setStoryControlsEnabled(false);
     Animated.timing(storyOpacity, {
       toValue: 0,
@@ -740,7 +793,10 @@ function AddaIntroScreen() {
       duration: 7200,
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: true,
-    }).start();
+    }).start(({ finished }) => {
+      if (finished) finishIntro();
+    });
+    completeTimerRef.current = setTimeout(finishIntro, 7600);
   };
 
   const openingScale = openingProgress.interpolate({
@@ -1498,6 +1554,8 @@ function GameplayScreen({
   alertMeter,
   policeMeter,
   playerPoint,
+  playerDirection,
+  moveTick,
   onMove,
   onAction,
   onComplete,
@@ -1516,6 +1574,8 @@ function GameplayScreen({
   alertMeter: number;
   policeMeter: number;
   playerPoint: { x: number; y: number };
+  playerDirection: Direction;
+  moveTick: number;
   onMove: (dx: number, dy: number) => void;
   onAction: (kind: 'weapon' | 'powerup' | 'vehicle' | 'secret' | 'dance') => void;
   onComplete: () => void;
@@ -1525,6 +1585,16 @@ function GameplayScreen({
   const currentMissionSlot = ((mission.missionNumber - 1) % 5) + 1;
   const completed = session.missionIds.slice(0, session.currentIndex).map((_, index) => index + 1);
   const defeated = session.bossHealth <= 0 || session.bodyguardHealth <= 0;
+  const [isBodyguardMoving, setIsBodyguardMoving] = useState(false);
+  const bodyguardCharacterId = characterIdFromName(bodyguardName, 'lunaCrown');
+  const bossCharacterId = characterIdFromName(bossName, 'victorKane');
+
+  useEffect(() => {
+    setIsBodyguardMoving(true);
+    const timeout = setTimeout(() => setIsBodyguardMoving(false), 260);
+    return () => clearTimeout(timeout);
+  }, [moveTick]);
+
   return (
     <Screen title={modeName} subtitle={mission.title} right={topStatus}>
       <Card>
@@ -1543,11 +1613,11 @@ function GameplayScreen({
         <View style={[screenStyles.escapePoint, { right: 24, top: 26 }]} />
         <View style={[screenStyles.enemyDot, { left: 48, top: 44 }]} />
         <View style={[screenStyles.enemyDot, { right: 60, bottom: 42 }]} />
-        <View style={[screenStyles.playerDot, { left: `${playerPoint.x}%`, top: `${playerPoint.y}%` }]}>
-          <Text style={screenStyles.dotText}>B</Text>
+        <View style={[screenStyles.animatedMapCharacter, { left: `${playerPoint.x}%`, top: `${playerPoint.y}%` }]}>
+          <AnimatedCharacter characterId={bodyguardCharacterId} direction={playerDirection} isMoving={isBodyguardMoving} scale={0.18} />
         </View>
-        <View style={[screenStyles.bossDot, { left: `${Math.max(8, playerPoint.x - 8)}%`, top: `${Math.min(80, playerPoint.y + 8)}%` }]}>
-          <Text style={screenStyles.dotText}>S</Text>
+        <View style={[screenStyles.animatedMapCharacter, { left: `${Math.max(8, playerPoint.x - 8)}%`, top: `${Math.min(80, playerPoint.y + 8)}%` }]}>
+          <AnimatedCharacter characterId={bossCharacterId} direction={playerDirection} isMoving={isBodyguardMoving} scale={0.16} />
         </View>
       </View>
       <View style={screenStyles.controlsGrid}>
@@ -3248,6 +3318,12 @@ const screenStyles = StyleSheet.create({
     backgroundColor: colors.gold,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  animatedMapCharacter: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+    transform: [{ translateX: -18 }, { translateY: -22 }],
   },
   enemyDot: {
     position: 'absolute',

@@ -16,6 +16,7 @@ export type ScreenName =
   | 'daily'
   | 'profile'
   | 'addaIntro'
+  | 'world'
   | 'gameplay'
   | 'missionComplete'
   | 'runComplete'

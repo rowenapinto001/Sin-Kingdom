@@ -1,38 +1,38 @@
-import { useState } from 'react';
-import { Image, LayoutChangeEvent, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { LayoutChangeEvent, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import AnimatedCharacter from '../components/AnimatedCharacter';
 import DPad from '../components/DPad';
-import { Direction, GameBounds } from '../game/types';
+import { allCharacterConfigs, getCharacterConfig } from '../data/characterConfigs';
+import { CharacterId, Direction, GameBounds } from '../game/types';
 import { useGameLoop } from '../game/useGameLoop';
 
-const FRAME_SIZE = 32;
-const SHEET_SIZE = 128;
+type NpcActor = {
+  id: string;
+  characterId: CharacterId;
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  direction: Direction;
+};
 
-const directionToRow = {
-  down: 0,
-  left: 1,
-  right: 2,
-  up: 3,
-} as const;
+const npcSeeds: NpcActor[] = [
+  { id: 'police-1', characterId: 'police', x: 42, y: 88, dx: 1, dy: 0, direction: 'right' },
+  { id: 'guard-1', characterId: 'securityGuard1', x: 260, y: 126, dx: -1, dy: 0, direction: 'left' },
+  { id: 'civilian-1', characterId: 'npcWoman', x: 96, y: 280, dx: 0, dy: 1, direction: 'down' },
+  { id: 'civilian-2', characterId: 'npcMan', x: 310, y: 330, dx: 0, dy: -1, direction: 'up' },
+  { id: 'boss-1', characterId: 'victorKane', x: 410, y: 192, dx: -0.6, dy: 0, direction: 'left' },
+  { id: 'bodyguard-1', characterId: 'zaraFlame', x: 180, y: 410, dx: 0.7, dy: 0, direction: 'right' },
+];
 
-function Sprite({ direction, frame }: { direction: Direction; frame: number }) {
-  const row = directionToRow[direction];
-  const offsetX = -frame * FRAME_SIZE;
-  const offsetY = -row * FRAME_SIZE;
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
 
-  return (
-    <View style={styles.spriteViewport}>
-      <Image
-        source={require('../../assets/player/player.png')}
-        style={{
-          width: SHEET_SIZE,
-          height: SHEET_SIZE,
-          position: 'absolute',
-          left: offsetX,
-          top: offsetY,
-        }}
-      />
-    </View>
-  );
+function directionFromVector(dx: number, dy: number, fallback: Direction): Direction {
+  if (dx === 0 && dy === 0) return fallback;
+  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'right' : 'left';
+  return dy > 0 ? 'down' : 'up';
 }
 
 export default function GameScreen() {
@@ -40,7 +40,14 @@ export default function GameScreen() {
   const stageWidth = Math.min(width, (height * 9) / 16);
   const [bounds, setBounds] = useState<GameBounds>({ width: 0, height: 0 });
   const [activeDirections, setActiveDirections] = useState<Direction[]>([]);
+  const [npcActors, setNpcActors] = useState<NpcActor[]>(npcSeeds);
+  const npcActorsRef = useRef(npcSeeds);
+  const npcTickRef = useRef<number | null>(null);
+  const npcLastTimestampRef = useRef<number | null>(null);
   const player = useGameLoop(activeDirections, bounds);
+  const playerConfig = getCharacterConfig(player.characterId);
+
+  const configuredCharacterCount = useMemo(() => allCharacterConfigs.length, []);
 
   const handleLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -55,29 +62,109 @@ export default function GameScreen() {
     setActiveDirections((current) => current.filter((item) => item !== direction));
   };
 
+  useEffect(() => {
+    if (bounds.width <= 0 || bounds.height <= 0) return undefined;
+
+    const tick = (timestamp: number) => {
+      if (npcLastTimestampRef.current === null) {
+        npcLastTimestampRef.current = timestamp;
+      }
+
+      const deltaSeconds = Math.min((timestamp - npcLastTimestampRef.current) / 1000, 0.05);
+      npcLastTimestampRef.current = timestamp;
+
+      npcActorsRef.current = npcActorsRef.current.map((actor) => {
+        const config = getCharacterConfig(actor.characterId);
+        const actorWidth = config.sheet.frameWidth * config.scale;
+        const actorHeight = config.sheet.frameHeight * config.scale;
+        const maxX = Math.max(0, bounds.width - actorWidth);
+        const maxY = Math.max(0, bounds.height - actorHeight);
+        let nextDx = actor.dx;
+        let nextDy = actor.dy;
+        let nextX = actor.x + actor.dx * config.speed * deltaSeconds * 0.55;
+        let nextY = actor.y + actor.dy * config.speed * deltaSeconds * 0.55;
+
+        if (nextX <= 0 || nextX >= maxX) {
+          nextDx *= -1;
+          nextX = clamp(nextX, 0, maxX);
+        }
+
+        if (nextY <= 0 || nextY >= maxY) {
+          nextDy *= -1;
+          nextY = clamp(nextY, 0, maxY);
+        }
+
+        return {
+          ...actor,
+          x: nextX,
+          y: nextY,
+          dx: nextDx,
+          dy: nextDy,
+          direction: directionFromVector(nextDx, nextDy, actor.direction),
+        };
+      });
+
+      setNpcActors(npcActorsRef.current);
+      npcTickRef.current = requestAnimationFrame(tick);
+    };
+
+    npcTickRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (npcTickRef.current !== null) {
+        cancelAnimationFrame(npcTickRef.current);
+      }
+      npcLastTimestampRef.current = null;
+    };
+  }, [bounds.height, bounds.width]);
+
   return (
     <View style={styles.appRoot}>
       <View style={[styles.root, { width: stageWidth }]} onLayout={handleLayout}>
         <View style={styles.gridOverlay} pointerEvents="none" />
+        <View style={styles.floorGlow} pointerEvents="none" />
+
+        {npcActors.map((actor) => (
+          <View
+            key={actor.id}
+            style={[
+              styles.actor,
+              {
+                transform: [{ translateX: actor.x }, { translateY: actor.y }],
+              },
+            ]}
+          >
+            <AnimatedCharacter characterId={actor.characterId} direction={actor.direction} isMoving />
+          </View>
+        ))}
 
         <View
           style={[
             styles.player,
             {
+              width: playerConfig.sheet.frameWidth * playerConfig.scale,
+              height: playerConfig.sheet.frameHeight * playerConfig.scale,
               transform: [{ translateX: player.x }, { translateY: player.y }],
             },
           ]}
         >
-          <Sprite direction={player.direction} frame={player.animationFrame} />
+          <AnimatedCharacter
+            characterId={player.characterId}
+            direction={player.direction}
+            isMoving={player.isMoving}
+            frameOverride={player.animationFrame}
+          />
         </View>
 
         <View style={styles.debugPanel} pointerEvents="none">
-          <Text style={styles.debugTitle}>Player Debug</Text>
+          <Text style={styles.debugTitle}>Animation Debug</Text>
+          <Text style={styles.debugText}>character: {playerConfig.name}</Text>
           <Text style={styles.debugText}>direction: {player.direction}</Text>
           <Text style={styles.debugText}>isMoving: {String(player.isMoving)}</Text>
           <Text style={styles.debugText}>animationFrame: {player.animationFrame}</Text>
           <Text style={styles.debugText}>x: {player.x.toFixed(1)}</Text>
           <Text style={styles.debugText}>y: {player.y.toFixed(1)}</Text>
+          <Text style={styles.debugText}>configured characters: {configuredCharacterCount}</Text>
         </View>
 
         <DPad activeDirections={activeDirections} onDirectionPressIn={pressDirection} onDirectionPressOut={releaseDirection} />
@@ -107,24 +194,31 @@ const styles = StyleSheet.create({
     opacity: 0.18,
     backgroundColor: '#1b2030',
   },
+  floorGlow: {
+    position: 'absolute',
+    left: '12%',
+    right: '12%',
+    bottom: '18%',
+    height: 90,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 46, 129, 0.12)',
+  },
+  actor: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+  },
   player: {
     position: 'absolute',
     left: 0,
     top: 0,
-    width: FRAME_SIZE,
-    height: FRAME_SIZE,
-  },
-  spriteViewport: {
-    width: FRAME_SIZE,
-    height: FRAME_SIZE,
-    overflow: 'hidden',
   },
   debugPanel: {
     position: 'absolute',
     top: 54,
     left: 16,
     padding: 12,
-    minWidth: 205,
+    minWidth: 235,
     borderRadius: 10,
     backgroundColor: 'rgba(0, 0, 0, 0.72)',
     borderWidth: 1,

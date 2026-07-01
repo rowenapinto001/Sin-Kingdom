@@ -628,6 +628,7 @@ function AddaIntroScreen({ onComplete }: { onComplete: () => void }) {
   const onCompleteRef = useRef(onComplete);
   const didCompleteRef = useRef(false);
   const [storyControlsEnabled, setStoryControlsEnabled] = useState(false);
+  const [walkAnimationEnabled, setWalkAnimationEnabled] = useState(false);
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
@@ -690,6 +691,7 @@ function AddaIntroScreen({ onComplete }: { onComplete: () => void }) {
       walkStartedRef.current = true;
       if (storyTimerRef.current) clearTimeout(storyTimerRef.current);
       if (walkTimerRef.current) clearTimeout(walkTimerRef.current);
+      setWalkAnimationEnabled(true);
       setStoryControlsEnabled(false);
       Animated.timing(storyOpacity, {
         toValue: 0,
@@ -753,7 +755,6 @@ function AddaIntroScreen({ onComplete }: { onComplete: () => void }) {
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
-      walkTimerRef.current = setTimeout(startWalking, 4_500);
     }, 11_250);
 
     return () => {
@@ -780,6 +781,7 @@ function AddaIntroScreen({ onComplete }: { onComplete: () => void }) {
     if (storyTimerRef.current) clearTimeout(storyTimerRef.current);
     if (walkTimerRef.current) clearTimeout(walkTimerRef.current);
     if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
+    setWalkAnimationEnabled(true);
     setStoryControlsEnabled(false);
     Animated.timing(storyOpacity, {
       toValue: 0,
@@ -936,89 +938,93 @@ function AddaIntroScreen({ onComplete }: { onComplete: () => void }) {
         <View style={screenStyles.addaPathGlow} />
       </Animated.View>
 
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          screenStyles.addaBossActor,
-          {
-            transform: [
-              { translateX: bossX },
-              { translateY: bossY },
-              { translateY: bossBob },
-              { translateY: bossStepBounce },
-              { rotateZ: bossBodyLean },
-              { scale: bossScale },
-            ],
-          },
-        ]}
-      >
-        <Animated.View
-          style={[
-            screenStyles.addaActorShadow,
-            {
-              transform: [{ translateX: bossShadowShift }, { scaleX: bossShadowScale }],
-            },
-          ]}
-        />
-        <Animated.Image
-          source={bossStairWalk}
-          resizeMode="contain"
-          style={[screenStyles.addaBossImage, { opacity: bossStrideAOpacity, transform: [{ translateX: bossFrameSway }] }]}
-        />
-        <Animated.Image
-          source={bossStairWalk}
-          resizeMode="contain"
-          style={[
-            screenStyles.addaBossImage,
-            {
-              opacity: bossStrideBOpacity,
-              transform: [{ scaleX: -1 }, { translateX: Animated.multiply(bossFrameSway, -1) }],
-            },
-          ]}
-        />
-      </Animated.View>
+      {walkAnimationEnabled ? (
+        <>
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              screenStyles.addaBossActor,
+              {
+                transform: [
+                  { translateX: bossX },
+                  { translateY: bossY },
+                  { translateY: bossBob },
+                  { translateY: bossStepBounce },
+                  { rotateZ: bossBodyLean },
+                  { scale: bossScale },
+                ],
+              },
+            ]}
+          >
+            <Animated.View
+              style={[
+                screenStyles.addaActorShadow,
+                {
+                  transform: [{ translateX: bossShadowShift }, { scaleX: bossShadowScale }],
+                },
+              ]}
+            />
+            <Animated.Image
+              source={bossStairWalk}
+              resizeMode="contain"
+              style={[screenStyles.addaBossImage, { opacity: bossStrideAOpacity, transform: [{ translateX: bossFrameSway }] }]}
+            />
+            <Animated.Image
+              source={bossStairWalk}
+              resizeMode="contain"
+              style={[
+                screenStyles.addaBossImage,
+                {
+                  opacity: bossStrideBOpacity,
+                  transform: [{ scaleX: -1 }, { translateX: Animated.multiply(bossFrameSway, -1) }],
+                },
+              ]}
+            />
+          </Animated.View>
 
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          screenStyles.addaLunaActor,
-          {
-            transform: [
-              { translateX: lunaX },
-              { translateY: lunaY },
-              { translateY: walkBob },
-              { translateY: lunaStepBounce },
-              { rotateZ: lunaBodyLean },
-              { scale: lunaScale },
-            ],
-          },
-        ]}
-      >
-        <Animated.View
-          style={[
-            screenStyles.addaActorShadow,
-            {
-              transform: [{ translateX: lunaShadowShift }, { scaleX: lunaShadowScale }],
-            },
-          ]}
-        />
-        <Animated.Image
-          source={lunaStairWalk}
-          resizeMode="contain"
-          style={[screenStyles.addaLunaImage, { opacity: lunaStrideAOpacity, transform: [{ translateX: lunaFrameSway }] }]}
-        />
-        <Animated.Image
-          source={lunaStairWalk}
-          resizeMode="contain"
-          style={[
-            screenStyles.addaLunaImage,
-            {
-              opacity: lunaStrideBOpacity,
-              transform: [{ scaleX: -1 }, { translateX: Animated.multiply(lunaFrameSway, -1) }],
-            },
-          ]}
-        />
-      </Animated.View>
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              screenStyles.addaLunaActor,
+              {
+                transform: [
+                  { translateX: lunaX },
+                  { translateY: lunaY },
+                  { translateY: walkBob },
+                  { translateY: lunaStepBounce },
+                  { rotateZ: lunaBodyLean },
+                  { scale: lunaScale },
+                ],
+              },
+            ]}
+          >
+            <Animated.View
+              style={[
+                screenStyles.addaActorShadow,
+                {
+                  transform: [{ translateX: lunaShadowShift }, { scaleX: lunaShadowScale }],
+                },
+              ]}
+            />
+            <Animated.Image
+              source={lunaStairWalk}
+              resizeMode="contain"
+              style={[screenStyles.addaLunaImage, { opacity: lunaStrideAOpacity, transform: [{ translateX: lunaFrameSway }] }]}
+            />
+            <Animated.Image
+              source={lunaStairWalk}
+              resizeMode="contain"
+              style={[
+                screenStyles.addaLunaImage,
+                {
+                  opacity: lunaStrideBOpacity,
+                  transform: [{ scaleX: -1 }, { translateX: Animated.multiply(lunaFrameSway, -1) }],
+                },
+              ]}
+            />
+          </Animated.View>
+        </>
+      ) : null}
 
       <Animated.View pointerEvents="none" style={[screenStyles.addaTitleWrap, { opacity: titleOpacity }]}>
         <Text style={screenStyles.addaTitle}>Apun Ka Adda</Text>

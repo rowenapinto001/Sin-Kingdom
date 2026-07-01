@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import DPad from '../components/DPad';
 import SpriteCharacter from '../components/SpriteCharacter';
+import { airportDestinations } from '../data/airportDestinations';
 import { allLocationConfigs, getLocationConfig } from '../data/locationConfigs';
 import { Direction } from '../game/types';
 import { CharacterAction } from '../types/CharacterAnimation';
@@ -16,17 +17,19 @@ import {
   worldNpcs,
   worldObjects,
 } from './worldData';
-import { Rect, WorldLocation, WorldNpc } from './worldTypes';
+import { Rect, WorldLocation, WorldLocationId, WorldNpc } from './worldTypes';
+import AirplaneFlight from './locations/AirplaneFlight';
+import AirportInterior from './locations/AirportInterior';
+
+type NpcRuntime = WorldNpc & {
+  targetIndex: number;
+  isMoving: boolean;
+};
 
 type WorldActor = {
   x: number;
   y: number;
   direction: Direction;
-  isMoving: boolean;
-};
-
-type NpcRuntime = WorldNpc & {
-  targetIndex: number;
   isMoving: boolean;
 };
 
@@ -88,6 +91,8 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const { width, height } = useWindowDimensions();
   const [activeDirections, setActiveDirections] = useState<Direction[]>([]);
   const activeDirectionsRef = useRef<Direction[]>([]);
+  const [isFlying, setIsFlying] = useState(false);
+  const [flightDestinationId, setFlightDestinationId] = useState<WorldLocationId>('playerHouse');
   const [caughtByPolice, setCaughtByPolice] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [playerAction, setPlayerAction] = useState<CharacterAction>('idle');
@@ -226,8 +231,14 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     const nextPlayer = { x: spawn.x - PLAYER_WORLD_SIZE / 2, y: spawn.y, direction: 'down' as Direction, isMoving: false };
     playerRef.current = nextPlayer;
     setPlayer(nextPlayer);
+    setIsFlying(false);
     setInsideLocation(null);
     setMessage(`Plane/parachute travel complete: landed near ${location.name}.`);
+  };
+
+  const startFlight = (destinationId: WorldLocationId = flightDestinationId) => {
+    setFlightDestinationId(destinationId);
+    setIsFlying(true);
   };
 
   const simulateCaught = () => {
@@ -250,42 +261,58 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     }, 430);
   };
 
+  if (isFlying) {
+    return (
+      <AirplaneFlight
+        destinationId={flightDestinationId}
+        worldLocations={worldLocations}
+        onLand={travelTo}
+        onReturnToAirport={() => setIsFlying(false)}
+      />
+    );
+  }
+
   if (insideLocation) {
     const isAirport = insideLocation.id === 'airport';
     return (
       <View style={styles.root}>
         <View style={[styles.interior, { borderColor: insideLocation.accent }]}>
-          <Text style={styles.interiorTitle}>{insideLocation.interiorTitle}</Text>
-          <Text style={styles.interiorText}>{insideLocation.interiorDescription}</Text>
-          <View style={styles.interiorStage}>
-            <SpriteCharacter characterId="lunaCrown" direction="down" isMoving={false} currentAction="idle" scale={2.4} />
-            <SpriteCharacter characterId="victorKane" direction="down" isMoving={false} currentAction="idle" scale={2.2} />
-            {insideLocation.id === 'partyPartyYeah' ? (
-              <>
-                <SpriteCharacter characterId="pinkCoupleDancers" direction="down" isMoving currentAction="dance" scale={1.8} />
-                <SpriteCharacter characterId="purpleCoupleDance" direction="down" isMoving currentAction="dance" scale={1.8} />
-                <SpriteCharacter characterId="centerDancer" direction="down" isMoving currentAction="dance" scale={1.8} />
-              </>
-            ) : null}
-          </View>
-          <View style={styles.buttonRow}>
-            <Pressable style={styles.primaryButton} onPress={onStartMission}>
-              <Text style={styles.primaryButtonText}>START MISSION</Text>
-            </Pressable>
-            <Pressable style={styles.secondaryButton} onPress={() => setInsideLocation(null)}>
-              <Text style={styles.secondaryButtonText}>EXIT</Text>
-            </Pressable>
-          </View>
           {isAirport ? (
-            <View style={styles.travelPanel}>
-              <Text style={styles.panelTitle}>Plane / Parachute Travel</Text>
-              <View style={styles.travelGrid}>
-                {worldLocations.filter((location) => location.id !== 'policeStation').map((location) => (
-                  <Pressable key={location.id} style={styles.travelButton} onPress={() => travelTo(location.id)}>
-                    <Text style={styles.travelText}>{location.name}</Text>
-                  </Pressable>
-                ))}
+            <AirportInterior
+              selectedDestinationId={flightDestinationId}
+              destinations={airportDestinations}
+              caughtByPolice={caughtByPolice}
+              onSelectDestination={(destinationId) => {
+                setFlightDestinationId(destinationId);
+              }}
+              onStartFlight={startFlight}
+              onExit={() => setInsideLocation(null)}
+            />
+          ) : (
+            <>
+              <Text style={styles.interiorTitle}>{insideLocation.interiorTitle}</Text>
+              <Text style={styles.interiorText}>{insideLocation.interiorDescription}</Text>
+              <View style={styles.interiorStage}>
+                <SpriteCharacter characterId="lunaCrown" direction="down" isMoving={false} currentAction="idle" scale={2.4} />
+                <SpriteCharacter characterId="victorKane" direction="down" isMoving={false} currentAction="idle" scale={2.2} />
+                {insideLocation.id === 'partyPartyYeah' ? (
+                  <>
+                    <SpriteCharacter characterId="pinkCoupleDancers" direction="down" isMoving currentAction="dance" scale={1.8} />
+                    <SpriteCharacter characterId="purpleCoupleDance" direction="down" isMoving currentAction="dance" scale={1.8} />
+                    <SpriteCharacter characterId="centerDancer" direction="down" isMoving currentAction="dance" scale={1.8} />
+                  </>
+                ) : null}
               </View>
+            </>
+          )}
+          {!isAirport ? (
+            <View style={styles.buttonRow}>
+              <Pressable style={styles.primaryButton} onPress={onStartMission}>
+                <Text style={styles.primaryButtonText}>START MISSION</Text>
+              </Pressable>
+              <Pressable style={styles.secondaryButton} onPress={() => setInsideLocation(null)}>
+                <Text style={styles.secondaryButtonText}>EXIT</Text>
+              </Pressable>
             </View>
           ) : null}
         </View>
@@ -372,6 +399,125 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#08110d',
     overflow: 'hidden',
+  },
+  flightRoot: {
+    flex: 1,
+    backgroundColor: '#060816',
+    overflow: 'hidden',
+  },
+  flightSky: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: '#101a3d',
+  },
+  flightSun: {
+    position: 'absolute',
+    right: 74,
+    top: 82,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: '#ffbd66',
+    shadowColor: '#ff61d8',
+    shadowOpacity: 0.75,
+    shadowRadius: 24,
+  },
+  flightCloud: {
+    position: 'absolute',
+    width: 170,
+    height: 44,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 210, 244, 0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.24)',
+  },
+  flightCityBand: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 120,
+    backgroundColor: 'rgba(7, 5, 20, 0.76)',
+    borderTopWidth: 2,
+    borderTopColor: '#ff2e8a',
+  },
+  destinationMarker: {
+    position: 'absolute',
+    width: 84,
+    minHeight: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    borderWidth: 2,
+    shadowColor: '#ff2e8a',
+    shadowOpacity: 0.7,
+    shadowRadius: 10,
+  },
+  destinationMarkerText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  destinationMarkerTextSelected: {
+    color: '#11040a',
+  },
+  flightPlane: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 74,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flightPlaneIcon: {
+    color: '#fff',
+    fontSize: 46,
+    fontWeight: '900',
+    textShadowColor: '#8ee8ff',
+    textShadowRadius: 12,
+  },
+  flightCabin: {
+    position: 'absolute',
+    left: 20,
+    top: 17,
+    flexDirection: 'row',
+    gap: -6,
+    opacity: 0.82,
+    transform: [{ scale: 0.42 }],
+  },
+  flightHud: {
+    position: 'absolute',
+    left: 16,
+    top: 14,
+    width: 390,
+    maxWidth: '54%',
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(4, 4, 14, 0.82)',
+    borderWidth: 2,
+    borderColor: '#ffbd28',
+  },
+  flightTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '900',
+    textShadowColor: '#ff2e8a',
+    textShadowRadius: 8,
+  },
+  flightText: {
+    marginTop: 4,
+    color: '#fbe6ff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  flightActions: {
+    position: 'absolute',
+    right: 18,
+    top: 18,
+    flexDirection: 'row',
+    gap: 10,
   },
   world: {
     position: 'absolute',
@@ -479,6 +625,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 46, 138, 0.9)',
     borderColor: '#fff0a6',
   },
+  disabledButton: {
+    opacity: 0.52,
+  },
   secondaryButtonText: {
     color: '#fff',
     fontSize: 12,
@@ -491,6 +640,92 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     backgroundColor: '#130916',
+  },
+  airportHero: {
+    flex: 1,
+    minHeight: 280,
+    justifyContent: 'flex-end',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  airportHeroImage: {
+    borderRadius: 12,
+  },
+  airportShade: {
+    flex: 1,
+    padding: 18,
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(4, 5, 14, 0.22)',
+  },
+  airportLogo: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(7, 6, 18, 0.72)',
+    color: '#ffbd28',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  airportTitle: {
+    marginTop: 4,
+    color: '#fff',
+    fontSize: 34,
+    fontWeight: '900',
+    textShadowColor: '#00162b',
+    textShadowRadius: 8,
+  },
+  airportSubtitle: {
+    width: '72%',
+    color: '#ffdf55',
+    fontSize: 14,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    textShadowColor: '#000',
+    textShadowRadius: 5,
+  },
+  airportBoardingRow: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 12,
+  },
+  airportPassenger: {
+    width: 96,
+    height: 92,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    borderRadius: 12,
+    backgroundColor: 'rgba(5, 2, 10, 0.74)',
+    borderWidth: 1,
+    borderColor: '#ff2e8a',
+    overflow: 'hidden',
+  },
+  airportPassengerText: {
+    paddingBottom: 5,
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  boardPlaneButton: {
+    marginLeft: 'auto',
+    minWidth: 220,
+    minHeight: 74,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: '#ffbd28',
+    borderWidth: 3,
+    borderColor: '#fff0a6',
+    shadowColor: '#ff7b00',
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+  },
+  boardPlaneText: {
+    color: '#120600',
+    fontSize: 22,
+    fontWeight: '900',
   },
   interiorTitle: {
     color: '#fff',

@@ -65,8 +65,8 @@ function directionFromVector(dx: number, dy: number, fallback: Direction): Direc
 }
 
 const exteriorBlocks: Rect[] = [
-  { x: 70, y: 74, width: 720, height: 150 },
-  { x: 830, y: 78, width: 250, height: 150 },
+  { x: 60, y: 82, width: 748, height: 162 },
+  { x: 822, y: 72, width: 284, height: 176 },
   { x: 836, y: 400, width: 262, height: 96 },
   { x: 52, y: 486, width: 482, height: 84 },
 ];
@@ -358,17 +358,54 @@ function AirportExteriorArt() {
   return (
     <View style={styles.artRoot}>
       <View style={styles.skyGlow} />
+      <View style={styles.sunsetBand} />
+      <View style={styles.farCityLine}>
+        {Array.from({ length: 24 }).map((_, index) => (
+          <View key={index} style={[styles.farTower, { height: 26 + ((index * 17) % 62) }]} />
+        ))}
+      </View>
+
+      <View style={styles.terminalBackWing}>
+        {Array.from({ length: 8 }).map((_, index) => (
+          <View key={index} style={styles.backWingWindow} />
+        ))}
+      </View>
       <View style={styles.terminalShadow} />
+      <View style={styles.terminalSideWing}>
+        <View style={styles.sideWingRoof} />
+        {Array.from({ length: 5 }).map((_, index) => (
+          <View key={index} style={[styles.sideGlassPanel, { left: 18 + index * 42 }]} />
+        ))}
+      </View>
       <View style={styles.terminal}>
+        <View style={styles.terminalDepthFace} />
         <View style={styles.terminalRoof} />
+        <View style={styles.terminalRoofLip} />
         <View style={styles.glassWall}>
           {Array.from({ length: 12 }).map((_, index) => (
-            <View key={index} style={styles.glassRib} />
+            <View key={index} style={[styles.glassBay, index % 2 === 0 && styles.glassBayLit]}>
+              <View style={styles.glassRib} />
+            </View>
+          ))}
+        </View>
+        <View style={styles.departureLevel}>
+          {Array.from({ length: 10 }).map((_, index) => (
+            <View key={index} style={styles.departureDoor} />
           ))}
         </View>
         <Text style={styles.terminalSign}>SIN KINGDOM AIRPORT</Text>
       </View>
+
+      <View style={styles.arrivalCanopy}>
+        <View style={styles.canopyTop} />
+        {Array.from({ length: 5 }).map((_, index) => (
+          <View key={index} style={[styles.canopyPillar, { left: 20 + index * 26 }]} />
+        ))}
+      </View>
       <View style={styles.entryPath} />
+      <View style={styles.dropOffLoop}>
+        <View style={styles.dropOffIsland} />
+      </View>
       <View style={styles.parking}>
         {Array.from({ length: 22 }).map((_, index) => (
           <View key={index} style={[styles.parkedCar, index % 3 === 0 && styles.parkedCarPink, index % 4 === 0 && styles.parkedCarGold]} />
@@ -379,6 +416,23 @@ function AirportExteriorArt() {
         <View style={[styles.movingCar, { left: 148 }]} />
         <View style={[styles.movingCar, styles.movingCarBlue, { left: 710 }]} />
       </View>
+
+      <View style={styles.controlTower}>
+        <View style={styles.towerCab}>
+          <View style={styles.towerGlass} />
+        </View>
+        <View style={styles.towerBody} />
+        <Text style={styles.towerText}>ATC</Text>
+      </View>
+      <View style={styles.radarTower}>
+        <View style={styles.radarPole} />
+        <View style={styles.radarDish}>
+          <View style={styles.radarSweep} />
+        </View>
+        <View style={styles.radarRing} />
+        <Text style={styles.radarText}>RADAR</Text>
+      </View>
+
       <View style={styles.hangar}>
         <Text style={styles.smallSign}>HANGAR</Text>
       </View>
@@ -395,6 +449,8 @@ function AirportExteriorArt() {
       </View>
       <View style={styles.lightPoleA} />
       <View style={styles.lightPoleB} />
+      <View style={styles.lightGlowA} />
+      <View style={styles.lightGlowB} />
     </View>
   );
 }
@@ -493,7 +549,7 @@ const styles = StyleSheet.create({
   },
   artRoot: {
     flex: 1,
-    backgroundColor: '#14244a',
+    backgroundColor: '#14234b',
   },
   artRootInside: {
     flex: 1,
@@ -504,47 +560,186 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    height: 230,
-    backgroundColor: '#d87a7c',
+    height: 252,
+    backgroundColor: '#f29a77',
+  },
+  sunsetBand: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 132,
+    height: 180,
+    backgroundColor: 'rgba(101, 65, 139, 0.62)',
+  },
+  farCityLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 178,
+    height: 94,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
+    paddingHorizontal: 12,
+    opacity: 0.5,
+  },
+  farTower: {
+    width: 28,
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
+    backgroundColor: '#211c48',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 189, 40, 0.28)',
+  },
+  terminalBackWing: {
+    position: 'absolute',
+    left: 122,
+    top: 96,
+    width: 660,
+    height: 126,
+    borderRadius: 18,
+    backgroundColor: '#384d6b',
+    borderWidth: 2,
+    borderColor: '#9ab7ce',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: 22,
+    opacity: 0.95,
+  },
+  backWingWindow: {
+    width: 56,
+    height: 66,
+    borderRadius: 12,
+    backgroundColor: 'rgba(142, 232, 255, 0.48)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.72)',
   },
   terminalShadow: {
     position: 'absolute',
-    left: 58,
-    top: 92,
-    width: 744,
-    height: 150,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.34)',
-    transform: [{ translateY: 20 }],
+    left: 48,
+    top: 112,
+    width: 784,
+    height: 176,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0,0,0,0.38)',
+    transform: [{ translateY: 24 }],
+  },
+  terminalSideWing: {
+    position: 'absolute',
+    left: 618,
+    top: 112,
+    width: 222,
+    height: 126,
+    borderTopRightRadius: 30,
+    borderBottomRightRadius: 24,
+    backgroundColor: '#526884',
+    borderWidth: 2,
+    borderColor: '#bfd4e6',
+    transform: [{ skewY: '-4deg' }],
+  },
+  sideWingRoof: {
+    position: 'absolute',
+    left: -12,
+    right: -8,
+    top: -18,
+    height: 34,
+    borderRadius: 18,
+    backgroundColor: '#d7dbe2',
+    borderWidth: 2,
+    borderColor: '#fff0a6',
+  },
+  sideGlassPanel: {
+    position: 'absolute',
+    top: 34,
+    width: 30,
+    height: 64,
+    borderRadius: 8,
+    backgroundColor: 'rgba(109, 211, 255, 0.46)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.68)',
   },
   terminal: {
     position: 'absolute',
-    left: 70,
-    top: 74,
-    width: 720,
-    height: 150,
-    borderRadius: 26,
-    backgroundColor: '#b98262',
-    borderWidth: 2,
-    borderColor: '#f6d092',
+    left: 60,
+    top: 82,
+    width: 748,
+    height: 162,
+    borderRadius: 30,
+    backgroundColor: '#657a92',
+    borderWidth: 3,
+    borderColor: '#f2d6a2',
     overflow: 'hidden',
   },
+  terminalDepthFace: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 48,
+    backgroundColor: '#384151',
+  },
   terminalRoof: {
-    height: 36,
-    backgroundColor: '#d9a06f',
+    height: 42,
+    backgroundColor: '#cfd7df',
     borderBottomWidth: 2,
+    borderColor: '#fff0a6',
+  },
+  terminalRoofLip: {
+    position: 'absolute',
+    left: -20,
+    right: -20,
+    top: 28,
+    height: 22,
+    borderRadius: 18,
+    backgroundColor: '#f0b95d',
+    borderWidth: 1,
     borderColor: '#fff0a6',
   },
   glassWall: {
     flex: 1,
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: 'rgba(94, 184, 229, 0.52)',
+    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 42,
+    backgroundColor: 'rgba(36, 67, 92, 0.88)',
+  },
+  glassBay: {
+    width: 48,
+    borderRadius: 10,
+    backgroundColor: 'rgba(105, 209, 255, 0.48)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.65)',
+    overflow: 'hidden',
+  },
+  glassBayLit: {
+    backgroundColor: 'rgba(255, 190, 96, 0.48)',
   },
   glassRib: {
-    width: 5,
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    alignSelf: 'center',
+    width: 6,
+    height: '110%',
+    backgroundColor: 'rgba(255,255,255,0.76)',
     transform: [{ skewX: '-14deg' }],
+  },
+  departureLevel: {
+    position: 'absolute',
+    left: 26,
+    right: 26,
+    bottom: 12,
+    height: 30,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  departureDoor: {
+    width: 44,
+    height: 28,
+    borderRadius: 5,
+    backgroundColor: '#101827',
+    borderWidth: 1,
+    borderColor: '#8ee8ff',
   },
   terminalSign: {
     position: 'absolute',
@@ -553,6 +748,35 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '900',
+    textShadowColor: '#ff2e8a',
+    textShadowRadius: 6,
+  },
+  arrivalCanopy: {
+    position: 'absolute',
+    left: 484,
+    top: 228,
+    width: 170,
+    height: 74,
+    zIndex: 2,
+  },
+  canopyTop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 26,
+    borderRadius: 14,
+    backgroundColor: '#f0b12e',
+    borderWidth: 2,
+    borderColor: '#fff0a6',
+  },
+  canopyPillar: {
+    position: 'absolute',
+    top: 24,
+    width: 8,
+    height: 50,
+    backgroundColor: '#d5e4ef',
+    borderRadius: 4,
   },
   entryPath: {
     position: 'absolute',
@@ -561,9 +785,31 @@ const styles = StyleSheet.create({
     width: 146,
     height: 270,
     borderRadius: 18,
-    backgroundColor: '#64677a',
+    backgroundColor: '#596171',
     borderWidth: 2,
     borderColor: '#bfc7d6',
+  },
+  dropOffLoop: {
+    position: 'absolute',
+    left: 340,
+    top: 304,
+    width: 450,
+    height: 154,
+    borderRadius: 86,
+    borderWidth: 22,
+    borderColor: '#222833',
+    backgroundColor: 'transparent',
+  },
+  dropOffIsland: {
+    position: 'absolute',
+    left: 138,
+    top: 38,
+    width: 136,
+    height: 52,
+    borderRadius: 28,
+    backgroundColor: '#2c6c58',
+    borderWidth: 2,
+    borderColor: '#72d69e',
   },
   parking: {
     position: 'absolute',
@@ -575,8 +821,10 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     padding: 8,
-    backgroundColor: '#272a34',
+    backgroundColor: '#202632',
     borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#3d4658',
   },
   parkedCar: {
     width: 48,
@@ -596,7 +844,9 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 92,
-    backgroundColor: '#1e222c',
+    backgroundColor: '#171c26',
+    borderTopWidth: 4,
+    borderColor: '#343d4d',
   },
   roadLine: {
     position: 'absolute',
@@ -613,20 +863,115 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 10,
     backgroundColor: '#ffbd28',
+    borderWidth: 2,
+    borderColor: '#fff0a6',
   },
   movingCarBlue: {
     backgroundColor: '#8ee8ff',
     top: 56,
   },
+  controlTower: {
+    position: 'absolute',
+    left: 870,
+    top: 52,
+    width: 82,
+    height: 214,
+    alignItems: 'center',
+  },
+  towerCab: {
+    width: 82,
+    height: 54,
+    borderRadius: 12,
+    backgroundColor: '#1d3147',
+    borderWidth: 3,
+    borderColor: '#ffbd28',
+    overflow: 'hidden',
+  },
+  towerGlass: {
+    flex: 1,
+    backgroundColor: 'rgba(142, 232, 255, 0.58)',
+    borderBottomWidth: 8,
+    borderColor: 'rgba(255,255,255,0.38)',
+  },
+  towerBody: {
+    width: 42,
+    height: 156,
+    backgroundColor: '#53667b',
+    borderLeftWidth: 4,
+    borderRightWidth: 4,
+    borderColor: '#d5e4ef',
+  },
+  towerText: {
+    position: 'absolute',
+    top: 16,
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  radarTower: {
+    position: 'absolute',
+    right: 46,
+    top: 128,
+    width: 140,
+    height: 190,
+    alignItems: 'center',
+  },
+  radarPole: {
+    position: 'absolute',
+    bottom: 0,
+    width: 12,
+    height: 120,
+    borderRadius: 6,
+    backgroundColor: '#d5e4ef',
+  },
+  radarDish: {
+    position: 'absolute',
+    top: 22,
+    width: 96,
+    height: 42,
+    borderTopLeftRadius: 60,
+    borderTopRightRadius: 60,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    backgroundColor: '#0f2235',
+    borderWidth: 3,
+    borderColor: '#8ee8ff',
+    overflow: 'hidden',
+  },
+  radarSweep: {
+    position: 'absolute',
+    left: 45,
+    top: -20,
+    width: 5,
+    height: 86,
+    backgroundColor: '#ffbd28',
+    transform: [{ rotate: '58deg' }],
+  },
+  radarRing: {
+    position: 'absolute',
+    top: 0,
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    borderWidth: 2,
+    borderColor: 'rgba(142, 232, 255, 0.38)',
+  },
+  radarText: {
+    position: 'absolute',
+    bottom: 24,
+    color: '#8ee8ff',
+    fontSize: 10,
+    fontWeight: '900',
+  },
   hangar: {
     position: 'absolute',
-    left: 830,
-    top: 78,
-    width: 250,
-    height: 150,
+    left: 822,
+    top: 72,
+    width: 284,
+    height: 176,
     borderTopLeftRadius: 120,
     borderTopRightRadius: 120,
-    backgroundColor: '#41516b',
+    backgroundColor: '#334157',
     borderWidth: 3,
     borderColor: '#9db6cc',
     justifyContent: 'flex-end',
@@ -640,7 +985,9 @@ const styles = StyleSheet.create({
     width: 468,
     height: 74,
     borderRadius: 10,
-    backgroundColor: '#232733',
+    backgroundColor: '#202531',
+    borderWidth: 3,
+    borderColor: '#384252',
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
@@ -713,6 +1060,24 @@ const styles = StyleSheet.create({
     width: 8,
     height: 118,
     backgroundColor: '#f7e7ba',
+  },
+  lightGlowA: {
+    position: 'absolute',
+    left: 54,
+    top: 246,
+    width: 58,
+    height: 24,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 240, 166, 0.32)',
+  },
+  lightGlowB: {
+    position: 'absolute',
+    left: 708,
+    top: 241,
+    width: 58,
+    height: 24,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 240, 166, 0.32)',
   },
   smallSign: {
     color: '#fff',

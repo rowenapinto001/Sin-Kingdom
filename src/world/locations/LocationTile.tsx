@@ -65,6 +65,7 @@ export default function LocationTile({ location, caughtByPolice = false }: Locat
 
   return (
     <View
+      pointerEvents="none"
       style={[
         styles.root,
         {

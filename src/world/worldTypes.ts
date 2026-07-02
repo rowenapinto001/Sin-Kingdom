@@ -52,7 +52,8 @@ export type WorldNpc = {
 export type WorldObject = Rect & {
   id: string;
   label: string;
-  kind: 'road' | 'footpath' | 'grass' | 'water' | 'building' | 'decor' | 'vehicle' | 'stage' | 'sand';
+  kind: 'road' | 'bridge' | 'footpath' | 'grass' | 'water' | 'building' | 'decor' | 'vehicle' | 'stage' | 'sand';
   color: string;
   blocked?: boolean;
+  rotate?: string;
 };

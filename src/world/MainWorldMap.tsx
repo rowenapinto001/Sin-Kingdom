@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import DPad from '../components/DPad';
 import SpriteCharacter from '../components/SpriteCharacter';
 import { airportDestinations } from '../data/airportDestinations';
 import { allLocationConfigs, getLocationConfig } from '../data/locationConfigs';
+import { worldRoadDecorations, worldRoadObjects } from '../data/worldRoads';
 import { Direction } from '../game/types';
 import { CharacterAction } from '../types/CharacterAnimation';
 import LocationTile from './locations/LocationTile';
@@ -20,6 +21,9 @@ import {
 import { Rect, WorldLocation, WorldLocationId, WorldNpc } from './worldTypes';
 import AirplaneFlight from './locations/AirplaneFlight';
 import AirportInterior from './locations/AirportInterior';
+import LandscapeLayer, { FullWorldGrass } from './gardenDecorations';
+
+const friendsCanalBridgeImage = require('../../assets/environment/bridges/friends_canal_bridge.png');
 
 type NpcRuntime = WorldNpc & {
   targetIndex: number;
@@ -33,10 +37,21 @@ type WorldActor = {
   isMoving: boolean;
 };
 
+type FootstepPoint = {
+  id: number;
+  x: number;
+  y: number;
+};
+
 type MainWorldMapProps = {
   onStartMission: () => void;
   onBackToHideout: () => void;
 };
+
+const MINIMAP_WIDTH = 145;
+const MINIMAP_HEIGHT = 106;
+const MINIMAP_SCALE_X = MINIMAP_WIDTH / WORLD_WIDTH;
+const MINIMAP_SCALE_Y = MINIMAP_HEIGHT / WORLD_HEIGHT;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -78,13 +93,243 @@ function nearestLocation(actor: WorldActor) {
   return locationConfig ? worldLocations.find((location) => location.id === locationConfig.id) : undefined;
 }
 
-function isBlocked(next: Rect, caughtByPolice: boolean) {
-  if (next.x < 0 || next.y < 0 || next.x + next.width > WORLD_WIDTH || next.y + next.height > WORLD_HEIGHT) return true;
-  if (worldObjects.some((object) => object.blocked && rectsOverlap(next, object))) return true;
-  return allLocationConfigs.some((location) => {
-    if (location.id === 'policeStation' && caughtByPolice) return false;
-    return rectsOverlap(next, location.collisionBox);
-  });
+function RoadMarkings({ object }: { object: Rect }) {
+  const horizontal = object.width >= object.height;
+  const count = Math.max(1, Math.floor((horizontal ? object.width : object.height) / 170));
+  return (
+    <>
+      {Array.from({ length: count }).map((_, index) => (
+        <View
+          key={index}
+          style={[
+            horizontal ? styles.roadDashHorizontal : styles.roadDashVertical,
+            horizontal ? { left: 42 + index * 166 } : { top: 42 + index * 166 },
+          ]}
+        />
+      ))}
+      <View style={horizontal ? styles.roadEdgeTop : styles.roadEdgeLeft} />
+      <View style={horizontal ? styles.roadEdgeBottom : styles.roadEdgeRight} />
+    </>
+  );
+}
+
+function WaterDetails() {
+  return (
+    <>
+      {Array.from({ length: 8 }).map((_, index) => (
+        <View
+          key={index}
+          style={[
+            styles.waterRipple,
+            {
+              left: 34 + index * 92,
+              top: index % 2 === 0 ? 34 : 104,
+              width: 58 + (index % 3) * 18,
+            },
+          ]}
+        />
+      ))}
+      {Array.from({ length: 9 }).map((_, index) => (
+        <View
+          key={`lily-${index}`}
+          style={[
+            styles.lilyPad,
+            {
+              left: 24 + index * 78,
+              top: index % 2 === 0 ? 144 : 28,
+            },
+          ]}
+        />
+      ))}
+    </>
+  );
+}
+
+function BridgeDetails({ object }: { object: Rect }) {
+  return (
+    <>
+      <Image source={friendsCanalBridgeImage} resizeMode="cover" style={[styles.bridgeSceneImage, { width: object.width, height: object.height }]} />
+      <View style={styles.bridgeBoundaryTop} />
+      <View style={styles.bridgeBoundaryBottom} />
+      <View style={styles.bridgeBoundaryLeft} />
+      <View style={styles.bridgeBoundaryRight} />
+    </>
+  );
+}
+
+function RoadDecorationLayer() {
+  return (
+    <>
+      {worldRoadDecorations.map((decoration) => {
+        if (decoration.type === 'crosswalk') {
+          const horizontal = decoration.width >= decoration.height;
+          return (
+            <View
+              key={decoration.id}
+              style={[
+                styles.crosswalk,
+                {
+                  left: decoration.x,
+                  top: decoration.y,
+                  width: decoration.width,
+                  height: decoration.height,
+                  flexDirection: horizontal ? 'column' : 'row',
+                },
+              ]}
+            >
+              {Array.from({ length: 5 }).map((_, index) => (
+                <View key={index} style={horizontal ? styles.crosswalkStripeHorizontal : styles.crosswalkStripeVertical} />
+              ))}
+            </View>
+          );
+        }
+        if (decoration.type === 'trafficLight') {
+          return (
+            <View key={decoration.id} style={[styles.trafficLight, { left: decoration.x, top: decoration.y }]}>
+              <View style={[styles.signalDot, styles.signalRed]} />
+              <View style={[styles.signalDot, styles.signalYellow]} />
+              <View style={[styles.signalDot, styles.signalGreen]} />
+            </View>
+          );
+        }
+        if (decoration.type === 'streetLamp') {
+          return (
+            <View key={decoration.id} style={[styles.streetLamp, { left: decoration.x, top: decoration.y }]}>
+              <View style={styles.lampGlow} />
+              <View style={styles.lampPost} />
+            </View>
+          );
+        }
+        return (
+          <View key={decoration.id} style={[styles.roadSign, { left: decoration.x, top: decoration.y }]}>
+            <Text style={styles.roadSignText} numberOfLines={2}>
+              {decoration.label}
+            </Text>
+          </View>
+        );
+      })}
+    </>
+  );
+}
+
+function mapPoint(x: number, y: number) {
+  return {
+    left: x * MINIMAP_SCALE_X,
+    top: y * MINIMAP_SCALE_Y,
+  };
+}
+
+function MiniWorldMap({
+  player,
+  boss,
+  npcs,
+  footsteps,
+}: {
+  player: WorldActor;
+  boss: WorldActor;
+  npcs: NpcRuntime[];
+  footsteps: FootstepPoint[];
+}) {
+  const playerPoint = mapPoint(player.x + PLAYER_WORLD_SIZE / 2, player.y + PLAYER_WORLD_SIZE / 2);
+  const bossPoint = mapPoint(boss.x + PLAYER_WORLD_SIZE / 2, boss.y + PLAYER_WORLD_SIZE / 2);
+  const policeNpcs = npcs.filter((npc) => npc.role === 'police');
+  const policeClose = policeNpcs.some((npc) => Math.hypot(npc.x - player.x, npc.y - player.y) < 780);
+
+  return (
+    <View style={styles.minimapPanel}>
+      <View style={styles.minimapHeader}>
+        <Text style={styles.minimapTitle}>SIN KINGDOM</Text>
+        <Text style={[styles.minimapAlert, policeClose && styles.minimapAlertActive]}>
+          {policeClose ? 'POLICE BEHIND' : 'WORLD MAP'}
+        </Text>
+      </View>
+      <View style={styles.minimapCanvas}>
+        {worldRoadObjects.map((object) => {
+          const point = mapPoint(object.x, object.y);
+          return (
+            <View
+              key={object.id}
+              style={[
+                styles.minimapObject,
+                {
+                  left: point.left,
+                  top: point.top,
+                  width: Math.max(1, object.width * MINIMAP_SCALE_X),
+                  height: Math.max(1, object.height * MINIMAP_SCALE_Y),
+                  transform: object.rotate ? [{ rotate: object.rotate }] : undefined,
+                },
+                object.kind === 'footpath' && styles.minimapFootpath,
+                object.kind === 'road' && styles.minimapRoad,
+                object.kind === 'bridge' && styles.minimapBridge,
+                object.kind === 'water' && styles.minimapWater,
+              ]}
+            />
+          );
+        })}
+        {worldLocations.map((location, index) => {
+          const point = mapPoint(location.x, location.y);
+          return (
+            <View
+              key={location.id}
+              style={[
+                styles.minimapLocation,
+                {
+                  left: point.left,
+                  top: point.top,
+                  width: Math.max(8, location.width * MINIMAP_SCALE_X),
+                  height: Math.max(7, location.height * MINIMAP_SCALE_Y),
+                  borderColor: location.restricted ? '#ff3030' : location.accent,
+                },
+              ]}
+            >
+              <Text style={styles.minimapLocationText}>{index + 1}</Text>
+            </View>
+          );
+        })}
+        {footsteps.map((step, index) => {
+          const point = mapPoint(step.x, step.y);
+          return (
+            <View
+              key={step.id}
+              style={[
+                styles.minimapFootstep,
+                {
+                  left: point.left,
+                  top: point.top,
+                  opacity: 0.22 + index / Math.max(1, footsteps.length) * 0.68,
+                },
+              ]}
+            />
+          );
+        })}
+        <View style={[styles.minimapBossMarker, { left: bossPoint.left - 2.5, top: bossPoint.top - 2.5 }]} />
+        {policeNpcs.map((npc) => {
+          const point = mapPoint(npc.x + PLAYER_WORLD_SIZE / 2, npc.y + PLAYER_WORLD_SIZE / 2);
+          const close = Math.hypot(npc.x - player.x, npc.y - player.y) < 780;
+          return (
+            <View key={npc.id} style={[styles.minimapPoliceMarker, close && styles.minimapPoliceMarkerActive, { left: point.left - 4, top: point.top - 4 }]}>
+              <Text style={styles.minimapPoliceText}>!</Text>
+            </View>
+          );
+        })}
+        <View style={[styles.minimapPlayerMarker, { left: playerPoint.left - 4, top: playerPoint.top - 4 }]}>
+          <View style={styles.minimapPlayerDot} />
+        </View>
+        <View style={styles.compass}>
+          <Text style={styles.compassText}>N</Text>
+          <Text style={styles.compassMid}>+</Text>
+        </View>
+      </View>
+      <View style={styles.minimapLegend}>
+        <View style={[styles.legendDot, styles.legendPlayer]} />
+        <Text style={styles.legendText}>You</Text>
+        <View style={[styles.legendDot, styles.legendPolice]} />
+        <Text style={styles.legendText}>Police</Text>
+        <View style={[styles.legendDot, styles.legendStep]} />
+        <Text style={styles.legendText}>Footsteps</Text>
+      </View>
+    </View>
+  );
 }
 
 export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWorldMapProps) {
@@ -113,6 +358,10 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const bossRef = useRef(boss);
   const [npcs, setNpcs] = useState<NpcRuntime[]>(worldNpcs.map((npc) => ({ ...npc, targetIndex: 1, isMoving: true })));
   const npcsRef = useRef(npcs);
+  const [footsteps, setFootsteps] = useState<FootstepPoint[]>([]);
+  const footstepsRef = useRef<FootstepPoint[]>([]);
+  const footstepIdRef = useRef(0);
+  const lastFootstepRef = useRef({ x: PLAYER_HOUSE_SPAWN.x, y: PLAYER_HOUSE_SPAWN.y });
   const [insideLocation, setInsideLocation] = useState<WorldLocation | null>(null);
   const [message, setMessage] = useState('Start at Player House. Roads connect every major place outward from the center.');
   const frameRef = useRef<number | null>(null);
@@ -143,12 +392,34 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         width: PLAYER_WORLD_SIZE,
         height: PLAYER_WORLD_SIZE,
       };
-      const nextPlayer = isMoving && !isBlocked(candidate, caughtByPolice)
-        ? { x: candidate.x, y: candidate.y, direction, isMoving }
+      const nextPlayer = isMoving
+        ? {
+            x: clamp(candidate.x, 0, WORLD_WIDTH - PLAYER_WORLD_SIZE),
+            y: clamp(candidate.y, 0, WORLD_HEIGHT - PLAYER_WORLD_SIZE),
+            direction,
+            isMoving,
+          }
         : { ...current, direction, isMoving: false };
 
       playerRef.current = nextPlayer;
       setPlayer(nextPlayer);
+      if (nextPlayer.isMoving) {
+        const lastFootstep = lastFootstepRef.current;
+        const footstepDistance = Math.hypot(nextPlayer.x - lastFootstep.x, nextPlayer.y - lastFootstep.y);
+        if (footstepDistance > 92) {
+          lastFootstepRef.current = { x: nextPlayer.x, y: nextPlayer.y };
+          footstepIdRef.current += 1;
+          footstepsRef.current = [
+            ...footstepsRef.current.slice(-31),
+            {
+              id: footstepIdRef.current,
+              x: nextPlayer.x + PLAYER_WORLD_SIZE / 2,
+              y: nextPlayer.y + PLAYER_WORLD_SIZE / 2,
+            },
+          ];
+          setFootsteps(footstepsRef.current);
+        }
+      }
       if (playerAction !== 'shoot') {
         setPlayerAction(nextPlayer.isMoving ? (isRunning ? 'run' : 'walk') : 'idle');
       }
@@ -231,6 +502,9 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     const nextPlayer = { x: spawn.x - PLAYER_WORLD_SIZE / 2, y: spawn.y, direction: 'down' as Direction, isMoving: false };
     playerRef.current = nextPlayer;
     setPlayer(nextPlayer);
+    lastFootstepRef.current = { x: nextPlayer.x, y: nextPlayer.y };
+    footstepsRef.current = [];
+    setFootsteps([]);
     setIsFlying(false);
     setInsideLocation(null);
     setMessage(`Plane/parachute travel complete: landed near ${location.name}.`);
@@ -249,6 +523,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     const nextPlayer = { x: spawn.x, y: spawn.y, direction: 'up' as Direction, isMoving: false };
     playerRef.current = nextPlayer;
     setPlayer(nextPlayer);
+    lastFootstepRef.current = { x: nextPlayer.x, y: nextPlayer.y };
     setMessage('Police caught you. Police Station is now enterable for this sequence.');
   };
 
@@ -323,6 +598,8 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   return (
     <View style={styles.root}>
       <View style={[styles.world, { transform: [{ translateX: cameraX }, { translateY: cameraY }] }]}>
+        <FullWorldGrass width={WORLD_WIDTH} height={WORLD_HEIGHT} />
+        <LandscapeLayer />
         {worldObjects.map((object) => (
           <View
             key={object.id}
@@ -334,15 +611,23 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
                 width: object.width,
                 height: object.height,
                 backgroundColor: object.color,
+                transform: object.rotate ? [{ rotate: object.rotate }] : undefined,
               },
               object.kind === 'road' && styles.road,
+              object.kind === 'bridge' && styles.bridge,
               object.kind === 'footpath' && styles.footpath,
               object.kind === 'water' && styles.water,
             ]}
           >
-            {object.kind !== 'road' && object.kind !== 'footpath' ? <Text style={styles.objectLabel}>{object.label}</Text> : null}
+            {object.kind === 'road' ? <RoadMarkings object={object} /> : null}
+            {object.kind === 'bridge' ? <BridgeDetails object={object} /> : null}
+            {object.kind === 'water' ? <WaterDetails /> : null}
+            {object.kind !== 'road' && object.kind !== 'bridge' && object.kind !== 'water' && object.kind !== 'footpath' ? (
+              <Text style={styles.objectLabel}>{object.label}</Text>
+            ) : null}
           </View>
         ))}
+        <RoadDecorationLayer />
         {worldLocations.map((location) => (
           <LocationTile key={location.id} location={location} caughtByPolice={caughtByPolice} />
         ))}
@@ -372,6 +657,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         <Text style={styles.title}>Sin Kingdom World</Text>
         <Text style={styles.status}>{nearbyLocation ? `${nearbyLocation.name}: ${nearbyLocation.interaction}` : message}</Text>
       </View>
+      <MiniWorldMap player={player} boss={boss} npcs={npcs} footsteps={footsteps} />
       <View style={styles.actions}>
         <Pressable style={styles.primaryButton} onPress={enterNearbyLocation}>
           <Text style={styles.primaryButtonText}>{nearbyLocation ? 'INTERACT / ENTER' : 'INTERACT'}</Text>
@@ -525,7 +811,7 @@ const styles = StyleSheet.create({
     top: 0,
     width: WORLD_WIDTH,
     height: WORLD_HEIGHT,
-    backgroundColor: '#173d26',
+    backgroundColor: '#174126',
   },
   worldObject: {
     position: 'absolute',
@@ -534,15 +820,228 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   road: {
+    borderWidth: 0,
+    borderColor: '#4f5960',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.55,
+    shadowRadius: 10,
+  },
+  bridge: {
+    borderWidth: 0,
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+    shadowColor: '#000',
+    shadowOpacity: 0.65,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  bridgeSceneImage: {
+    borderRadius: 18,
+  },
+  bridgeBoundaryTop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 8,
+    backgroundColor: 'rgba(199,184,135,0.92)',
+    borderBottomWidth: 2,
+    borderBottomColor: 'rgba(64,48,32,0.65)',
+  },
+  bridgeBoundaryBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 10,
+    backgroundColor: 'rgba(36,98,40,0.88)',
+    borderTopWidth: 3,
+    borderTopColor: 'rgba(210,190,126,0.86)',
+  },
+  bridgeBoundaryLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 8,
+    backgroundColor: 'rgba(38,112,45,0.86)',
+    borderRightWidth: 2,
+    borderRightColor: 'rgba(210,190,126,0.78)',
+  },
+  bridgeBoundaryRight: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 8,
+    backgroundColor: 'rgba(35,93,43,0.86)',
+    borderLeftWidth: 2,
+    borderLeftColor: 'rgba(210,190,126,0.78)',
+  },
+  roadDashHorizontal: {
+    position: 'absolute',
+    top: '48%',
+    width: 58,
+    height: 6,
+    borderRadius: 4,
+    backgroundColor: '#f5c84c',
+  },
+  roadDashVertical: {
+    position: 'absolute',
+    left: '48%',
+    width: 6,
+    height: 58,
+    borderRadius: 4,
+    backgroundColor: '#f5c84c',
+  },
+  roadEdgeTop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 7,
+    height: 3,
+    backgroundColor: 'rgba(238,242,231,0.82)',
+  },
+  roadEdgeBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 7,
+    height: 3,
+    backgroundColor: 'rgba(238,242,231,0.78)',
+  },
+  roadEdgeLeft: {
+    position: 'absolute',
+    left: 7,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: 'rgba(238,242,231,0.82)',
+  },
+  roadEdgeRight: {
+    position: 'absolute',
+    right: 7,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: 'rgba(238,242,231,0.78)',
+  },
+  crosswalk: {
+    position: 'absolute',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    padding: 8,
+    zIndex: 4,
+  },
+  crosswalkStripeHorizontal: {
+    width: '86%',
+    height: 8,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  crosswalkStripeVertical: {
+    width: 8,
+    height: '86%',
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  trafficLight: {
+    position: 'absolute',
+    width: 26,
+    height: 54,
+    borderRadius: 9,
+    backgroundColor: '#07090d',
     borderWidth: 2,
-    borderColor: '#484b55',
+    borderColor: '#4d5668',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    zIndex: 8,
+  },
+  signalDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  signalRed: {
+    backgroundColor: '#ff3030',
+  },
+  signalYellow: {
+    backgroundColor: '#ffbd28',
+  },
+  signalGreen: {
+    backgroundColor: '#49e58d',
+  },
+  streetLamp: {
+    position: 'absolute',
+    width: 24,
+    height: 64,
+    alignItems: 'center',
+    zIndex: 7,
+  },
+  lampGlow: {
+    width: 30,
+    height: 22,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 240, 166, 0.42)',
+    borderWidth: 1,
+    borderColor: '#fff0a6',
+  },
+  lampPost: {
+    width: 5,
+    height: 48,
+    backgroundColor: '#d8d0c0',
+  },
+  roadSign: {
+    position: 'absolute',
+    width: 94,
+    minHeight: 40,
+    padding: 5,
+    borderRadius: 7,
+    backgroundColor: '#102038',
+    borderWidth: 2,
+    borderColor: '#8ee8ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 7,
+  },
+  roadSignText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '900',
+    textAlign: 'center',
   },
   footpath: {
-    borderRadius: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(232,222,185,0.44)',
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
   },
   water: {
     borderWidth: 2,
-    borderColor: '#5ddfff',
+    borderColor: 'rgba(151,221,241,0.42)',
+    borderRadius: 34,
+    overflow: 'hidden',
+    opacity: 0.98,
+    shadowColor: '#001924',
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+  },
+  waterRipple: {
+    position: 'absolute',
+    height: 5,
+    borderRadius: 10,
+    backgroundColor: 'rgba(192,244,255,0.55)',
+  },
+  lilyPad: {
+    position: 'absolute',
+    width: 24,
+    height: 13,
+    borderRadius: 14,
+    backgroundColor: 'rgba(76,150,65,0.82)',
   },
   objectLabel: {
     color: '#fff',
@@ -575,7 +1074,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     top: 16,
-    maxWidth: 520,
+    maxWidth: 430,
     padding: 12,
     borderRadius: 10,
     backgroundColor: 'rgba(4, 4, 10, 0.78)',
@@ -592,6 +1091,195 @@ const styles = StyleSheet.create({
     color: '#f3d9ff',
     fontSize: 13,
     fontWeight: '700',
+  },
+  minimapPanel: {
+    position: 'absolute',
+    right: 16,
+    top: 14,
+    width: MINIMAP_WIDTH + 12,
+    padding: 5,
+    borderRadius: 7,
+    backgroundColor: 'rgba(3, 8, 12, 0.9)',
+    borderWidth: 1.5,
+    borderColor: '#ff2e8a',
+    shadowColor: '#ff2e8a',
+    shadowOpacity: 0.55,
+    shadowRadius: 10,
+    zIndex: 50,
+  },
+  minimapHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+  },
+  minimapTitle: {
+    color: '#ff4f9e',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0,
+    textShadowColor: '#ff2e8a',
+    textShadowRadius: 4,
+  },
+  minimapAlert: {
+    color: '#f8f3e8',
+    fontSize: 5,
+    fontWeight: '900',
+  },
+  minimapAlertActive: {
+    color: '#ff3030',
+    textShadowColor: '#ff3030',
+    textShadowRadius: 6,
+  },
+  minimapCanvas: {
+    width: MINIMAP_WIDTH,
+    height: MINIMAP_HEIGHT,
+    overflow: 'hidden',
+    borderRadius: 4,
+    backgroundColor: '#183d24',
+    borderWidth: 1,
+    borderColor: 'rgba(255,189,40,0.72)',
+  },
+  minimapObject: {
+    position: 'absolute',
+    borderRadius: 2,
+  },
+  minimapRoad: {
+    backgroundColor: '#242830',
+    borderWidth: 0.5,
+    borderColor: '#ffca4a',
+  },
+  minimapBridge: {
+    backgroundColor: '#30343d',
+    borderWidth: 0.7,
+    borderColor: '#d6c088',
+  },
+  minimapFootpath: {
+    backgroundColor: '#8b8077',
+    opacity: 0.72,
+  },
+  minimapWater: {
+    backgroundColor: '#15799a',
+    borderRadius: 8,
+    opacity: 0.92,
+  },
+  minimapLocation: {
+    position: 'absolute',
+    borderWidth: 1,
+    borderRadius: 2,
+    backgroundColor: 'rgba(5,5,12,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  minimapLocationText: {
+    color: '#fff7db',
+    fontSize: 4,
+    fontWeight: '900',
+  },
+  minimapFootstep: {
+    position: 'absolute',
+    width: 2.4,
+    height: 2.4,
+    borderRadius: 2,
+    backgroundColor: '#fff4c0',
+  },
+  minimapPlayerMarker: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#8cff75',
+    backgroundColor: 'rgba(35,255,100,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  minimapPlayerDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#d9ff70',
+  },
+  minimapBossMarker: {
+    position: 'absolute',
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: '#ffd86e',
+    backgroundColor: '#7e4bff',
+  },
+  minimapPoliceMarker: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 2,
+    backgroundColor: '#08111c',
+    borderWidth: 1,
+    borderColor: '#ff3030',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  minimapPoliceMarkerActive: {
+    backgroundColor: '#ff3030',
+    shadowColor: '#ff3030',
+    shadowOpacity: 0.9,
+    shadowRadius: 7,
+  },
+  minimapPoliceText: {
+    color: '#fff',
+    fontSize: 5,
+    fontWeight: '900',
+  },
+  minimapLegend: {
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  legendDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 4,
+  },
+  legendPlayer: {
+    backgroundColor: '#8cff75',
+  },
+  legendPolice: {
+    backgroundColor: '#ff3030',
+  },
+  legendStep: {
+    backgroundColor: '#fff4c0',
+  },
+  legendText: {
+    color: '#f8f3e8',
+    fontSize: 5,
+    fontWeight: '800',
+  },
+  compass: {
+    position: 'absolute',
+    right: 4,
+    top: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.28)',
+  },
+  compassText: {
+    position: 'absolute',
+    top: -1,
+    color: '#fff',
+    fontSize: 5,
+    fontWeight: '900',
+  },
+  compassMid: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
   },
   actions: {
     position: 'absolute',

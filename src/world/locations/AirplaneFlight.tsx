@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-na
 import AirplaneControls from '../../components/AirplaneControls';
 import SpriteCharacter from '../../components/SpriteCharacter';
 import { airportDestinations } from '../../data/airportDestinations';
+import { WORLD_HEIGHT, WORLD_WIDTH } from '../worldData';
 import { WorldLocation, WorldLocationId } from '../worldTypes';
 
 type AirplaneFlightProps = {
@@ -51,8 +52,8 @@ export default function AirplaneFlight({ destinationId, worldLocations, onLand, 
   const routeMarker = useMemo(() => {
     const location = worldLocations.find((item) => item.id === selectedDestination.id) ?? worldLocations[0];
     return {
-      x: 20 + (location.x / 2200) * 260,
-      y: 34 + (location.y / 1600) * 126,
+      x: 20 + (location.x / WORLD_WIDTH) * 260,
+      y: 34 + (location.y / WORLD_HEIGHT) * 126,
     };
   }, [selectedDestination.id, worldLocations]);
 
@@ -231,8 +232,8 @@ export default function AirplaneFlight({ destinationId, worldLocations, onLand, 
           {airportDestinations.map((destination) => {
             const location = worldLocations.find((item) => item.id === destination.id);
             if (!location) return null;
-            const x = 20 + (location.x / 2200) * 260;
-            const y = 34 + (location.y / 1600) * 126;
+            const x = 20 + (location.x / WORLD_WIDTH) * 260;
+            const y = 34 + (location.y / WORLD_HEIGHT) * 126;
             const selected = destination.id === selectedDestination.id;
             return (
               <View key={destination.id} style={[styles.mapDot, { left: x, top: y }, selected && styles.mapDotSelected]}>

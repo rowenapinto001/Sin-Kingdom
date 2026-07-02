@@ -10,6 +10,7 @@ const placeholderSheet = createFourDirectionSheet({
   frameWidth: 32,
   frameHeight: 32,
 });
+const MAX_GAMEPLAY_FRAME_SIZE = 160;
 
 type SpriteCharacterProps = {
   characterId: string;
@@ -29,14 +30,17 @@ function getRenderableSprite(characterId: string, scale?: number): {
   animations: ReturnType<typeof createStandardAnimations> | ReturnType<typeof getCharacterConfig>['animations'];
 } {
   const config = getCharacterConfig(characterId);
+  const isSingleFrameReference = config.sheet.columns <= 1 || config.sheet.rows <= 1;
+  const isOversizedReference = config.sheet.frameWidth > MAX_GAMEPLAY_FRAME_SIZE || config.sheet.frameHeight > MAX_GAMEPLAY_FRAME_SIZE;
+  const mustUsePlaceholder = config.needsSpriteReplacement || isSingleFrameReference || isOversizedReference;
 
-  if (config.needsSpriteReplacement) {
+  if (mustUsePlaceholder) {
     // TODO: Replace this character's reference art with a proper transparent sprite sheet.
     // Reference/walk/shoot/dance boards are never rendered directly in gameplay.
     return {
       source: placeholderSource,
       sheet: placeholderSheet,
-      scale: scale && scale >= 1 ? scale : config.fallbackScale ?? 2,
+      scale: Math.min(scale && scale >= 1 ? scale : config.fallbackScale ?? config.scale ?? 2, 2.4),
       animationSpeedMs: config.animationSpeedMs,
       animations: createStandardAnimations({ frameDuration: config.animationSpeedMs }),
     };

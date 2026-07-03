@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import Bridge from '../components/Bridge';
 import DPad from '../components/DPad';
 import SpriteCharacter from '../components/SpriteCharacter';
 import { airportDestinations } from '../data/airportDestinations';
+import { allBridgeConfigs, getBridgeConfig } from '../data/bridgeConfigs';
 import { allLocationConfigs, getLocationConfig } from '../data/locationConfigs';
 import { worldRoadDecorations, worldRoadObjects } from '../data/worldRoads';
 import { Direction } from '../game/types';
@@ -18,12 +20,11 @@ import {
   worldNpcs,
   worldObjects,
 } from './worldData';
-import { Rect, WorldLocation, WorldLocationId, WorldNpc } from './worldTypes';
+import { Rect, WorldLocation, WorldLocationId, WorldNpc, WorldObject } from './worldTypes';
 import AirplaneFlight from './locations/AirplaneFlight';
 import AirportInterior from './locations/AirportInterior';
 import LandscapeLayer, { FullWorldGrass } from './gardenDecorations';
-
-const friendsCanalBridgeImage = require('../../assets/environment/bridges/friends_canal_bridge.png');
+import ShipRide from './locations/ShipRide';
 
 type NpcRuntime = WorldNpc & {
   targetIndex: number;
@@ -48,10 +49,16 @@ type MainWorldMapProps = {
   onBackToHideout: () => void;
 };
 
+type ShipSide = 'west' | 'east';
+
 const MINIMAP_WIDTH = 145;
 const MINIMAP_HEIGHT = 106;
 const MINIMAP_SCALE_X = MINIMAP_WIDTH / WORLD_WIDTH;
 const MINIMAP_SCALE_Y = MINIMAP_HEIGHT / WORLD_HEIGHT;
+const SHIP_DOCK_ZONES: Array<Rect & { side: ShipSide }> = [
+  { side: 'west', x: 365, y: 1725, width: 190, height: 250 },
+  { side: 'east', x: 1205, y: 1725, width: 190, height: 250 },
+];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -59,6 +66,34 @@ function clamp(value: number, min: number, max: number) {
 
 function rectsOverlap(a: Rect, b: Rect) {
   return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+function pointInRect(point: { x: number; y: number }, rect: Rect) {
+  return point.x >= rect.x && point.x <= rect.x + rect.width && point.y >= rect.y && point.y <= rect.y + rect.height;
+}
+
+function rectCenter(rect: Rect) {
+  return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+}
+
+function isBlockedByBridgeRails(rect: Rect) {
+  const center = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  return allBridgeConfigs.some((bridge) => {
+    if (!pointInRect(center, bridge.bounds)) return false;
+    return bridge.collisionBoxes.some((area) => pointInRect(center, area));
+  });
+}
+
+function isWaterAt(rect: Rect) {
+  const center = rectCenter(rect);
+  return (
+    worldObjects.some((object) => object.kind === 'water' && pointInRect(center, object)) ||
+    allBridgeConfigs.some((bridge) => {
+      if (!pointInRect(center, bridge.bounds)) return false;
+      if (bridge.walkableAreas.some((area) => pointInRect(center, area))) return false;
+      return bridge.waterAreas.some((area) => pointInRect(center, area));
+    })
+  );
 }
 
 function centerOf(rect: Rect) {
@@ -91,6 +126,13 @@ function nearestLocation(actor: WorldActor) {
     rectsOverlap({ x: actorCenter.x - 4, y: actorCenter.y - 4, width: 8, height: 8 }, location.interactionZone),
   );
   return locationConfig ? worldLocations.find((location) => location.id === locationConfig.id) : undefined;
+}
+
+function nearestShipDock(actor: WorldActor) {
+  const actorCenter = { x: actor.x + PLAYER_WORLD_SIZE / 2, y: actor.y + PLAYER_WORLD_SIZE / 2 };
+  return SHIP_DOCK_ZONES.find((dock) =>
+    rectsOverlap({ x: actorCenter.x - 6, y: actorCenter.y - 6, width: 12, height: 12 }, dock),
+  );
 }
 
 function RoadMarkings({ object }: { object: Rect }) {
@@ -145,15 +187,66 @@ function WaterDetails() {
   );
 }
 
-function BridgeDetails({ object }: { object: Rect }) {
+function BridgeDetails({ object }: { object: WorldObject }) {
+  const config = getBridgeConfig(object.id);
+  if (!config) return null;
+  return (
+    <Bridge config={config} />
+  );
+}
+
+function BridgeApproachLayer() {
   return (
     <>
-      <Image source={friendsCanalBridgeImage} resizeMode="cover" style={[styles.bridgeSceneImage, { width: object.width, height: object.height }]} />
-      <View style={styles.bridgeBoundaryTop} />
-      <View style={styles.bridgeBoundaryBottom} />
-      <View style={styles.bridgeBoundaryLeft} />
-      <View style={styles.bridgeBoundaryRight} />
+      <View style={[styles.bridgeApproachRoad, { left: 300, top: 1768, width: 170, height: 104 }]}>
+        <RoadMarkings object={{ x: 0, y: 0, width: 170, height: 104 }} />
+      </View>
+      <View style={[styles.bridgeApproachRoad, { left: 1288, top: 1768, width: 230, height: 104 }]}>
+        <RoadMarkings object={{ x: 0, y: 0, width: 230, height: 104 }} />
+      </View>
+      <View style={[styles.bridgeApproachRoadVertical, { left: 820, top: 1468, width: 126, height: 150 }]}>
+        <RoadMarkings object={{ x: 0, y: 0, width: 126, height: 150 }} />
+      </View>
+      <View style={[styles.bridgeApproachRoadVertical, { left: 820, top: 2010, width: 126, height: 170 }]}>
+        <RoadMarkings object={{ x: 0, y: 0, width: 126, height: 170 }} />
+      </View>
+      <View style={[styles.bridgeApproachSidewalk, { left: 300, top: 1724, width: 220, height: 34 }]} />
+      <View style={[styles.bridgeApproachSidewalk, { left: 300, top: 1882, width: 220, height: 34 }]} />
+      <View style={[styles.bridgeApproachSidewalk, { left: 1250, top: 1724, width: 280, height: 34 }]} />
+      <View style={[styles.bridgeApproachSidewalk, { left: 1250, top: 1882, width: 280, height: 34 }]} />
     </>
+  );
+}
+
+function BoatDockLayer() {
+  return (
+    <>
+      <BoatDock side="west" x={356} y={1714} label="WEST BOAT DOCK" />
+      <BoatDock side="east" x={1200} y={1714} label="EAST BOAT DOCK" />
+    </>
+  );
+}
+
+function BoatDock({ side, x, y, label }: { side: ShipSide; x: number; y: number; label: string }) {
+  const boatRotation = side === 'west' ? '-8deg' : '188deg';
+  return (
+    <View style={[styles.boatDock, { left: x, top: y }]}>
+      <View style={styles.dockPlanks}>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <View key={index} style={[styles.dockPlankLine, { left: 10 + index * 24 }]} />
+        ))}
+      </View>
+      <View style={[styles.mapBoat, { transform: [{ rotate: boatRotation }] }]}>
+        <View style={styles.mapBoatWake} />
+        <View style={styles.mapBoatHull}>
+          <View style={styles.mapBoatCabin} />
+        </View>
+      </View>
+      <View style={styles.dockLabel}>
+        <Text style={styles.dockLabelText}>{label}</Text>
+        <Text style={styles.dockHintText}>BOARD SHIP</Text>
+      </View>
+    </View>
   );
 }
 
@@ -337,6 +430,8 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const [activeDirections, setActiveDirections] = useState<Direction[]>([]);
   const activeDirectionsRef = useRef<Direction[]>([]);
   const [isFlying, setIsFlying] = useState(false);
+  const [isShipRiding, setIsShipRiding] = useState(false);
+  const [shipStartSide, setShipStartSide] = useState<ShipSide>('west');
   const [flightDestinationId, setFlightDestinationId] = useState<WorldLocationId>('playerHouse');
   const [caughtByPolice, setCaughtByPolice] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -366,8 +461,15 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const [message, setMessage] = useState('Start at Player House. Roads connect every major place outward from the center.');
   const frameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
+  const lastSafePlayerRef = useRef<WorldActor>({
+    x: PLAYER_HOUSE_SPAWN.x,
+    y: PLAYER_HOUSE_SPAWN.y,
+    direction: 'down',
+    isMoving: false,
+  });
 
   const nearbyLocation = useMemo(() => nearestLocation(player), [player]);
+  const nearbyDock = useMemo(() => nearestShipDock(player), [player]);
   const cameraX = clamp(width / 2 - player.x, width - WORLD_WIDTH, 0);
   const cameraY = clamp(height / 2 - player.y, height - WORLD_HEIGHT, 0);
 
@@ -392,14 +494,26 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         width: PLAYER_WORLD_SIZE,
         height: PLAYER_WORLD_SIZE,
       };
+      const bridgeBlocked = isBlockedByBridgeRails(candidate);
+      const waterHit = isWaterAt(candidate);
       const nextPlayer = isMoving
-        ? {
-            x: clamp(candidate.x, 0, WORLD_WIDTH - PLAYER_WORLD_SIZE),
-            y: clamp(candidate.y, 0, WORLD_HEIGHT - PLAYER_WORLD_SIZE),
-            direction,
-            isMoving,
-          }
+        ? waterHit
+          ? { ...lastSafePlayerRef.current, direction, isMoving: false }
+          : {
+              x: bridgeBlocked ? current.x : clamp(candidate.x, 0, WORLD_WIDTH - PLAYER_WORLD_SIZE),
+              y: bridgeBlocked ? current.y : clamp(candidate.y, 0, WORLD_HEIGHT - PLAYER_WORLD_SIZE),
+              direction,
+              isMoving: !bridgeBlocked,
+            }
         : { ...current, direction, isMoving: false };
+
+      if (waterHit) {
+        activeDirectionsRef.current = [];
+        setActiveDirections([]);
+        setMessage('Splash! Luna sank in the water. Use the bridge road to cross the river.');
+      } else if (nextPlayer.isMoving) {
+        lastSafePlayerRef.current = nextPlayer;
+      }
 
       playerRef.current = nextPlayer;
       setPlayer(nextPlayer);
@@ -431,12 +545,19 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
       const bossDistance = Math.hypot(bossDx, bossDy);
       const bossMoves = bossDistance > 12;
       const bossStep = bossMoves ? Math.min(bossDistance, 150 * deltaSeconds) / bossDistance : 0;
+      const bossCandidate = {
+        x: currentBoss.x + bossDx * bossStep,
+        y: currentBoss.y + bossDy * bossStep,
+        width: PLAYER_WORLD_SIZE,
+        height: PLAYER_WORLD_SIZE,
+      };
+      const bossBlocked = isBlockedByBridgeRails(bossCandidate) || isWaterAt(bossCandidate);
       const nextBoss = bossMoves
         ? {
-            x: currentBoss.x + bossDx * bossStep,
-            y: currentBoss.y + bossDy * bossStep,
+            x: bossBlocked ? currentBoss.x : bossCandidate.x,
+            y: bossBlocked ? currentBoss.y : bossCandidate.y,
             direction: directionFromVector(bossDx, bossDy, currentBoss.direction),
-            isMoving: true,
+            isMoving: !bossBlocked,
           }
         : { ...currentBoss, isMoving: false };
       bossRef.current = nextBoss;
@@ -481,8 +602,17 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   };
 
   const enterNearbyLocation = () => {
+    if (nearbyDock) {
+      setShipStartSide(nearbyDock.side);
+      setIsShipRiding(true);
+      setActiveDirections([]);
+      activeDirectionsRef.current = [];
+      setMessage('Luna and the Boss boarded the ship. Use the ship controls to cross the river.');
+      return;
+    }
+
     if (!nearbyLocation) {
-      setMessage('Move near a location entrance to interact.');
+      setMessage('Move near a location entrance or bridge dock to interact.');
       return;
     }
 
@@ -501,6 +631,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     const spawn = centerOf(getLocationConfig(location.id).interactionZone);
     const nextPlayer = { x: spawn.x - PLAYER_WORLD_SIZE / 2, y: spawn.y, direction: 'down' as Direction, isMoving: false };
     playerRef.current = nextPlayer;
+    lastSafePlayerRef.current = nextPlayer;
     setPlayer(nextPlayer);
     lastFootstepRef.current = { x: nextPlayer.x, y: nextPlayer.y };
     footstepsRef.current = [];
@@ -515,6 +646,30 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     setIsFlying(true);
   };
 
+  const dockShip = (side: ShipSide) => {
+    const dock = SHIP_DOCK_ZONES.find((item) => item.side === side) ?? SHIP_DOCK_ZONES[0];
+    const nextPlayer = {
+      x: dock.side === 'west' ? 432 : 1260,
+      y: 1810,
+      direction: dock.side === 'west' ? 'right' as Direction : 'left' as Direction,
+      isMoving: false,
+    };
+    const nextBoss = {
+      x: nextPlayer.x - 58,
+      y: nextPlayer.y + 52,
+      direction: nextPlayer.direction,
+      isMoving: false,
+    };
+    playerRef.current = nextPlayer;
+    bossRef.current = nextBoss;
+    lastSafePlayerRef.current = nextPlayer;
+    setPlayer(nextPlayer);
+    setBoss(nextBoss);
+    lastFootstepRef.current = { x: nextPlayer.x, y: nextPlayer.y };
+    setIsShipRiding(false);
+    setMessage(`Ship docked on the ${side} side of the bridge. Boss came with Luna.`);
+  };
+
   const simulateCaught = () => {
     setCaughtByPolice(true);
     const station = worldLocations.find((location) => location.id === 'policeStation');
@@ -522,6 +677,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     const spawn = centerOf(getLocationConfig(station.id).interactionZone);
     const nextPlayer = { x: spawn.x, y: spawn.y, direction: 'up' as Direction, isMoving: false };
     playerRef.current = nextPlayer;
+    lastSafePlayerRef.current = nextPlayer;
     setPlayer(nextPlayer);
     lastFootstepRef.current = { x: nextPlayer.x, y: nextPlayer.y };
     setMessage('Police caught you. Police Station is now enterable for this sequence.');
@@ -543,6 +699,19 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         worldLocations={worldLocations}
         onLand={travelTo}
         onReturnToAirport={() => setIsFlying(false)}
+      />
+    );
+  }
+
+  if (isShipRiding) {
+    return (
+      <ShipRide
+        startSide={shipStartSide}
+        onDock={dockShip}
+        onReturn={() => {
+          setIsShipRiding(false);
+          setMessage('Ship ride cancelled. Return to the bridge dock to board again.');
+        }}
       />
     );
   }
@@ -627,6 +796,8 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
             ) : null}
           </View>
         ))}
+        <BridgeApproachLayer />
+        <BoatDockLayer />
         <RoadDecorationLayer />
         {worldLocations.map((location) => (
           <LocationTile key={location.id} location={location} caughtByPolice={caughtByPolice} />
@@ -655,12 +826,14 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
 
       <View style={styles.hud}>
         <Text style={styles.title}>Sin Kingdom World</Text>
-        <Text style={styles.status}>{nearbyLocation ? `${nearbyLocation.name}: ${nearbyLocation.interaction}` : message}</Text>
+        <Text style={styles.status}>
+          {nearbyDock ? 'Bridge dock: Board ship with Boss and cross the river.' : nearbyLocation ? `${nearbyLocation.name}: ${nearbyLocation.interaction}` : message}
+        </Text>
       </View>
       <MiniWorldMap player={player} boss={boss} npcs={npcs} footsteps={footsteps} />
       <View style={styles.actions}>
         <Pressable style={styles.primaryButton} onPress={enterNearbyLocation}>
-          <Text style={styles.primaryButtonText}>{nearbyLocation ? 'INTERACT / ENTER' : 'INTERACT'}</Text>
+          <Text style={styles.primaryButtonText}>{nearbyDock ? 'BOARD SHIP' : nearbyLocation ? 'INTERACT / ENTER' : 'INTERACT'}</Text>
         </Pressable>
         <Pressable style={styles.secondaryButton} onPress={simulateCaught}>
           <Text style={styles.secondaryButtonText}>POLICE CAUGHT TEST</Text>
@@ -829,13 +1002,127 @@ const styles = StyleSheet.create({
   },
   bridge: {
     borderWidth: 0,
-    borderRadius: 18,
+    borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: 'transparent',
     shadowColor: '#000',
-    shadowOpacity: 0.65,
-    shadowRadius: 14,
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
     elevation: 8,
+  },
+  bridgeApproachRoad: {
+    position: 'absolute',
+    borderRadius: 0,
+    backgroundColor: '#22272f',
+    overflow: 'hidden',
+    borderTopWidth: 6,
+    borderBottomWidth: 6,
+    borderColor: '#9f9586',
+  },
+  bridgeApproachRoadVertical: {
+    position: 'absolute',
+    borderRadius: 0,
+    backgroundColor: '#22272f',
+    overflow: 'hidden',
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderColor: '#9f9586',
+  },
+  bridgeApproachSidewalk: {
+    position: 'absolute',
+    backgroundColor: '#9f9686',
+    borderTopWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: '#d7c697',
+  },
+  boatDock: {
+    position: 'absolute',
+    width: 180,
+    height: 250,
+    zIndex: 6,
+  },
+  dockPlanks: {
+    position: 'absolute',
+    left: 56,
+    top: 28,
+    width: 124,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: '#8d6f43',
+    borderWidth: 4,
+    borderColor: '#d5bd79',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+  },
+  dockPlankLine: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: 'rgba(72,45,24,0.45)',
+  },
+  mapBoat: {
+    position: 'absolute',
+    left: 24,
+    top: 82,
+    width: 116,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapBoatWake: {
+    position: 'absolute',
+    left: -18,
+    width: 56,
+    height: 14,
+    borderRadius: 999,
+    backgroundColor: 'rgba(220,255,255,0.62)',
+  },
+  mapBoatHull: {
+    width: 102,
+    height: 44,
+    borderRadius: 26,
+    backgroundColor: '#f2b632',
+    borderWidth: 4,
+    borderColor: '#fff0a8',
+    shadowColor: '#000',
+    shadowOpacity: 0.42,
+    shadowRadius: 8,
+  },
+  mapBoatCabin: {
+    position: 'absolute',
+    left: 36,
+    top: 8,
+    width: 34,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: '#4cc4df',
+    borderWidth: 2,
+    borderColor: '#defbff',
+  },
+  dockLabel: {
+    position: 'absolute',
+    left: 10,
+    top: 148,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: 'rgba(8,7,12,0.86)',
+    borderWidth: 2,
+    borderColor: '#ff2e8a',
+  },
+  dockLabelText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  dockHintText: {
+    marginTop: 2,
+    color: '#ffc334',
+    fontSize: 11,
+    fontWeight: '900',
   },
   bridgeSceneImage: {
     borderRadius: 18,

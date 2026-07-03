@@ -103,8 +103,8 @@ export const worldLocations: WorldLocation[] = [
     id: 'friendsHouse',
     name: 'Friends House',
     theme: 'Arion Vale strategy house',
-    x: 900,
-    y: 1720,
+    x: 1375,
+    y: 1450,
     width: 230,
     height: 165,
     color: '#2b5f64',
@@ -248,7 +248,7 @@ export const worldObjects: WorldObject[] = [
 ];
 
 export const worldNpcs: WorldNpc[] = [
-  { id: 'arion', name: 'Arion Vale', characterId: 'friend', role: 'friend', x: 1010, y: 1810, patrol: [{ x: 1010, y: 1810 }, { x: 1135, y: 1810 }], speed: 72, direction: 'right' },
+  { id: 'arion', name: 'Arion Vale', characterId: 'friend', role: 'friend', x: 1500, y: 1610, patrol: [{ x: 1500, y: 1610 }, { x: 1630, y: 1610 }], speed: 72, direction: 'right' },
   { id: 'police-whistle', name: 'Whistle Officer', characterId: 'police', role: 'police', x: 4580, y: 820, patrol: [{ x: 4580, y: 820 }, { x: 4920, y: 820 }], speed: 86, direction: 'right' },
   { id: 'guard-mahal', name: 'Mahal Guard', characterId: 'securityGuard1', role: 'guard', x: 3760, y: 1700, patrol: [{ x: 3760, y: 1700 }, { x: 4100, y: 1700 }], speed: 78, direction: 'right' },
   { id: 'guard-temple', name: 'Temple Guard', characterId: 'securityGuard2', role: 'guard', x: 3130, y: 3190, patrol: [{ x: 3130, y: 3190 }, { x: 3440, y: 3190 }], speed: 78, direction: 'right' },

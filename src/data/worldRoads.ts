@@ -1,5 +1,4 @@
 import {
-  createAngledRoad,
   createBridge,
   createCrosswalk,
   createCurvedRoad,
@@ -11,6 +10,7 @@ import {
 } from '../world/roadSystem';
 import { ROAD_WIDTH, RoadDecoration } from '../world/roadTiles';
 import { WorldObject } from '../world/worldTypes';
+import { bridgeConfigs } from './bridgeConfigs';
 
 const highway = { width: 96, color: '#22272f' };
 const districtRoad = { width: 78, color: '#252a32' };
@@ -88,15 +88,17 @@ const mainRoads: WorldObject[] = [
     { x: 4685, y: 625 },
     { x: 4750, y: 690 },
   ], districtRoad),
-  ...createCurvedRoad('road-friends-entry', 'Friends House Avenue', [
-    { x: 560, y: 1815 },
-    { x: 720, y: 1740 },
-    { x: 1015, y: 1815 },
+  ...createCurvedRoad('road-friends-city-connector', 'Friends City Connector', [
+    bridgeConfigs['bridge-friends-canal'].endPoint,
+    { x: 1620, y: 1815 },
+    { x: 2050, y: 1870 },
+    { x: 2475, y: 1885 },
+  ], highway),
+  ...createCurvedRoad('road-friends-house-drive', 'Friends House Drive', [
+    { x: 1780, y: 1815 },
+    { x: 1780, y: 1685 },
+    { x: 1588, y: 1605 },
   ], districtRoad),
-  ...createBridge('bridge-friends-canal', 'Friends Canal Bridge', { x: 790, y: 1782 }, 980, 640, '0deg'),
-  ...createAngledRoad('bridge-friends-west-ramp', 'Bridge Road Ramp', { x: 520, y: 1995 }, { x: 755, y: 1890 }, { width: 92, color: '#20242c' }),
-  ...createAngledRoad('bridge-friends-south-ramp', 'Bridge Road Ramp', { x: 710, y: 2380 }, { x: 585, y: 2030 }, { width: 92, color: '#20242c' }),
-  ...createIntersection('bridge-friends-ramp-join', { x: 590, y: 2030 }, ROAD_WIDTH * 1.2),
   ...createCurvedRoad('road-player-house-entry', 'Player House Drive', [
     { x: 2475, y: 1885 },
     { x: 2425, y: 1835 },
@@ -125,7 +127,6 @@ const intersections: WorldObject[] = [
   ...createIntersection('intersection-party', { x: 3520, y: 560 }, ROAD_WIDTH * 1.35),
   ...createIntersection('intersection-police', { x: 4750, y: 560 }, ROAD_WIDTH * 1.35),
   ...createIntersection('intersection-airport', { x: 560, y: 2980 }, ROAD_WIDTH * 1.5),
-  ...createIntersection('intersection-friends', { x: 560, y: 1815 }, ROAD_WIDTH * 1.35),
   ...createIntersection('intersection-player-house', { x: 2475, y: 1885 }, ROAD_WIDTH * 1.45),
   ...createIntersection('intersection-garden', { x: 2475, y: 2260 }, ROAD_WIDTH * 1.4),
   ...createIntersection('intersection-doorway', { x: 3570, y: 2260 }, ROAD_WIDTH * 1.35),
@@ -137,7 +138,19 @@ const intersections: WorldObject[] = [
   ...createIntersection('intersection-desert-gate', { x: 4610, y: 3480 }, ROAD_WIDTH * 1.35),
 ];
 
-export const worldRoadObjects: WorldObject[] = [...mainRoads, ...intersections];
+const bridgeRoads: WorldObject[] = createBridge(
+  bridgeConfigs['bridge-friends-canal'].id,
+  bridgeConfigs['bridge-friends-canal'].name,
+  {
+    x: bridgeConfigs['bridge-friends-canal'].bounds.x + bridgeConfigs['bridge-friends-canal'].bounds.width / 2,
+    y: bridgeConfigs['bridge-friends-canal'].bounds.y + bridgeConfigs['bridge-friends-canal'].bounds.height / 2,
+  },
+  bridgeConfigs['bridge-friends-canal'].bounds.width,
+  bridgeConfigs['bridge-friends-canal'].bounds.height,
+  '0deg',
+);
+
+export const worldRoadObjects: WorldObject[] = [...mainRoads, ...intersections, ...bridgeRoads];
 
 export const worldRoadDecorations: RoadDecoration[] = [
   createCrosswalk('crosswalk-boating', { x: 380, y: 560 }),

@@ -122,7 +122,7 @@ export const locationConfigs: Record<WorldLocationId, LocationConfig> = {
     id: 'friendsHouse',
     name: 'Friends House',
     description: 'Arion Vale strategy house with living room talk scene and Boss meeting area.',
-    image: require('../../assets/locations/friends_house_exterior.png'),
+    image: require('../../assets/locations/player_house.png'),
     x: friendsHouseExterior.x,
     y: friendsHouseExterior.y,
     width: friendsHouseExterior.width,
@@ -130,10 +130,10 @@ export const locationConfigs: Record<WorldLocationId, LocationConfig> = {
     enterable: true,
     interactionType: 'friend',
     collisionBox: {
-      x: friendsHouseExterior.x + friendsHouseExterior.house.x + 40,
-      y: friendsHouseExterior.y + friendsHouseExterior.house.y + 38,
-      width: friendsHouseExterior.house.width - 80,
-      height: friendsHouseExterior.house.height - 96,
+      x: friendsHouseExterior.x + friendsHouseExterior.house.x,
+      y: friendsHouseExterior.y + friendsHouseExterior.house.y,
+      width: friendsHouseExterior.house.width,
+      height: friendsHouseExterior.house.height,
     },
     interactionZone: {
       x: friendsHouseExterior.x + friendsHouseExterior.frontDoorZone.x,

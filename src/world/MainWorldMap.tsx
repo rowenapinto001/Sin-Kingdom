@@ -11,6 +11,7 @@ import { allLocationConfigs, getLocationConfig } from '../data/locationConfigs';
 import { worldRoadDecorations, worldRoadObjects } from '../data/worldRoads';
 import { Direction } from '../game/types';
 import { CharacterAction } from '../types/CharacterAnimation';
+import { isBlockedByLocation } from './collision';
 import LocationTile from './locations/LocationTile';
 import {
   PLAYER_HOUSE_SPAWN,
@@ -161,10 +162,6 @@ function nearestLocation(actor: WorldActor) {
     rectsOverlap({ x: actorCenter.x - 4, y: actorCenter.y - 4, width: 8, height: 8 }, location.interactionZone),
   );
   return locationConfig ? worldLocations.find((location) => location.id === locationConfig.id) : undefined;
-}
-
-function isBlockedByLocation(rect: Rect) {
-  return allLocationConfigs.some((location) => rectsOverlap(rect, location.collisionBox));
 }
 
 function nearestShipDock(actor: WorldActor) {

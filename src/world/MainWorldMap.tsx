@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Bridge from '../components/Bridge';
+import BoatControls from '../components/BoatControls';
+import BoatVehicle from '../components/BoatVehicle';
 import DPad from '../components/DPad';
 import SpriteCharacter from '../components/SpriteCharacter';
 import { airportDestinations } from '../data/airportDestinations';
@@ -24,7 +26,6 @@ import { Rect, WorldLocation, WorldLocationId, WorldNpc, WorldObject } from './w
 import AirplaneFlight from './locations/AirplaneFlight';
 import AirportInterior from './locations/AirportInterior';
 import LandscapeLayer, { FullWorldGrass } from './gardenDecorations';
-import ShipRide from './locations/ShipRide';
 
 type NpcRuntime = WorldNpc & {
   targetIndex: number;
@@ -35,6 +36,17 @@ type WorldActor = {
   x: number;
   y: number;
   direction: Direction;
+  isMoving: boolean;
+};
+
+type PlayerMode = 'walking' | 'driving_boat';
+
+type BoatState = {
+  x: number;
+  y: number;
+  heading: number;
+  speed: number;
+  fuel: number;
   isMoving: boolean;
 };
 
@@ -56,8 +68,22 @@ const MINIMAP_HEIGHT = 106;
 const MINIMAP_SCALE_X = MINIMAP_WIDTH / WORLD_WIDTH;
 const MINIMAP_SCALE_Y = MINIMAP_HEIGHT / WORLD_HEIGHT;
 const SHIP_DOCK_ZONES: Array<Rect & { side: ShipSide }> = [
-  { side: 'west', x: 365, y: 1725, width: 190, height: 250 },
-  { side: 'east', x: 1205, y: 1725, width: 190, height: 250 },
+  { side: 'west', x: 190, y: 300, width: 430, height: 480 },
+  { side: 'east', x: 210, y: 7770, width: 440, height: 300 },
+];
+const BOAT_WORLD_WIDTH = 102;
+const BOAT_WORLD_HEIGHT = 54;
+const BOAT_WATER_LANES: Rect[] = [
+  { x: 70, y: 660, width: 1180, height: 8040 },
+  { x: 150, y: 360, width: 700, height: 360 },
+  { x: 54, y: 1908, width: 1290, height: 136 },
+];
+const BOAT_BLOCKERS: Rect[] = [
+  { x: 250, y: 1420, width: 210, height: 140 },
+  { x: 790, y: 2380, width: 230, height: 150 },
+  { x: 360, y: 3820, width: 260, height: 170 },
+  { x: 760, y: 5650, width: 280, height: 180 },
+  { x: 260, y: 7600, width: 320, height: 220 },
 ];
 
 function clamp(value: number, min: number, max: number) {
@@ -96,6 +122,20 @@ function isWaterAt(rect: Rect) {
   );
 }
 
+function isBoatDrivableAt(rect: Rect) {
+  const samplePoints = [
+    rectCenter(rect),
+    { x: rect.x + 12, y: rect.y + 12 },
+    { x: rect.x + rect.width - 12, y: rect.y + 12 },
+    { x: rect.x + 12, y: rect.y + rect.height - 12 },
+    { x: rect.x + rect.width - 12, y: rect.y + rect.height - 12 },
+  ];
+  return samplePoints.every((point) => (
+    BOAT_WATER_LANES.some((area) => pointInRect(point, area)) &&
+    !BOAT_BLOCKERS.some((area) => pointInRect(point, area))
+  ));
+}
+
 function centerOf(rect: Rect) {
   return {
     x: rect.x + rect.width / 2,
@@ -131,8 +171,33 @@ function nearestLocation(actor: WorldActor) {
 function nearestShipDock(actor: WorldActor) {
   const actorCenter = { x: actor.x + PLAYER_WORLD_SIZE / 2, y: actor.y + PLAYER_WORLD_SIZE / 2 };
   return SHIP_DOCK_ZONES.find((dock) =>
-    rectsOverlap({ x: actorCenter.x - 6, y: actorCenter.y - 6, width: 12, height: 12 }, dock),
+    rectsOverlap({ x: actorCenter.x - 40, y: actorCenter.y - 40, width: 80, height: 80 }, dock),
   );
+}
+
+function nearestDockToRect(rect: Rect) {
+  const center = rectCenter(rect);
+  return SHIP_DOCK_ZONES.find((dock) => pointInRect(center, dock));
+}
+
+function boatSpawnForDock(side: ShipSide): BoatState {
+  return {
+    x: side === 'west' ? 365 : 405,
+    y: side === 'west' ? 675 : 7835,
+    heading: side === 'west' ? 90 : 270,
+    speed: 0,
+    fuel: 100,
+    isMoving: false,
+  };
+}
+
+function worldObjectLayer(object: WorldObject) {
+  if (object.kind === 'water') return 1;
+  if (object.kind === 'sand' || object.kind === 'grass' || object.kind === 'decor') return 2;
+  if (object.kind === 'footpath') return 3;
+  if (object.kind === 'road' || object.kind === 'vehicle' || object.kind === 'stage') return 4;
+  if (object.kind === 'bridge') return 5;
+  return 3;
 }
 
 function RoadMarkings({ object }: { object: Rect }) {
@@ -155,34 +220,74 @@ function RoadMarkings({ object }: { object: Rect }) {
   );
 }
 
-function WaterDetails() {
+function WaterDetails({ object }: { object: Rect }) {
+  const columns = Math.max(4, Math.ceil(object.width / 150));
+  const rows = Math.max(3, Math.ceil(object.height / 125));
+  const rippleCount = Math.min(190, columns * rows);
+  const lilyCount = Math.min(85, Math.max(8, Math.floor((object.width * object.height) / 82000)));
+  const bandCount = Math.min(34, Math.max(3, Math.floor(object.height / 270)));
+
   return (
     <>
-      {Array.from({ length: 8 }).map((_, index) => (
+      {Array.from({ length: bandCount }).map((_, index) => (
         <View
-          key={index}
+          key={`current-${index}`}
           style={[
-            styles.waterRipple,
+            styles.waterCurrentBand,
             {
-              left: 34 + index * 92,
-              top: index % 2 === 0 ? 34 : 104,
-              width: 58 + (index % 3) * 18,
+              left: index % 2 === 0 ? -80 : 60,
+              top: 54 + index * 255,
+              width: object.width + 160,
+              transform: [{ rotate: index % 2 === 0 ? '-3deg' : '3deg' }],
             },
           ]}
         />
       ))}
-      {Array.from({ length: 9 }).map((_, index) => (
+      {Array.from({ length: rippleCount }).map((_, index) => {
+        const row = Math.floor(index / columns);
+        const col = index % columns;
+        return (
+          <View
+            key={index}
+            style={[
+              styles.waterRipple,
+              {
+                left: 28 + col * 146 + (row % 2) * 42,
+                top: 32 + row * 118,
+                width: 54 + ((index + row) % 4) * 18,
+                opacity: 0.28 + ((index % 5) * 0.06),
+              },
+            ]}
+          />
+        );
+      })}
+      {Array.from({ length: lilyCount }).map((_, index) => (
+        <View
+          key={`foam-${index}`}
+          style={[
+            styles.waterFoamDot,
+            {
+              left: 42 + ((index * 139) % Math.max(100, object.width - 70)),
+              top: 44 + ((index * 317) % Math.max(100, object.height - 90)),
+            },
+          ]}
+        />
+      ))}
+      {Array.from({ length: lilyCount }).map((_, index) => (
         <View
           key={`lily-${index}`}
           style={[
             styles.lilyPad,
             {
-              left: 24 + index * 78,
-              top: index % 2 === 0 ? 144 : 28,
+              left: 22 + ((index * 173) % Math.max(80, object.width - 80)),
+              top: 38 + ((index * 251) % Math.max(80, object.height - 80)),
+              transform: [{ rotate: `${(index % 5) * 18 - 36}deg` }],
             },
           ]}
         />
       ))}
+      <View style={styles.waterShoreTop} />
+      <View style={styles.waterShoreBottom} />
     </>
   );
 }
@@ -198,22 +303,11 @@ function BridgeDetails({ object }: { object: WorldObject }) {
 function BridgeApproachLayer() {
   return (
     <>
-      <View style={[styles.bridgeApproachRoad, { left: 300, top: 1768, width: 170, height: 104 }]}>
-        <RoadMarkings object={{ x: 0, y: 0, width: 170, height: 104 }} />
+      <View style={[styles.bridgeApproachRoad, { left: 1370, top: 1768, width: 210, height: 104 }]}>
+        <RoadMarkings object={{ x: 0, y: 0, width: 210, height: 104 }} />
       </View>
-      <View style={[styles.bridgeApproachRoad, { left: 1288, top: 1768, width: 230, height: 104 }]}>
-        <RoadMarkings object={{ x: 0, y: 0, width: 230, height: 104 }} />
-      </View>
-      <View style={[styles.bridgeApproachRoadVertical, { left: 820, top: 1468, width: 126, height: 150 }]}>
-        <RoadMarkings object={{ x: 0, y: 0, width: 126, height: 150 }} />
-      </View>
-      <View style={[styles.bridgeApproachRoadVertical, { left: 820, top: 2010, width: 126, height: 170 }]}>
-        <RoadMarkings object={{ x: 0, y: 0, width: 126, height: 170 }} />
-      </View>
-      <View style={[styles.bridgeApproachSidewalk, { left: 300, top: 1724, width: 220, height: 34 }]} />
-      <View style={[styles.bridgeApproachSidewalk, { left: 300, top: 1882, width: 220, height: 34 }]} />
-      <View style={[styles.bridgeApproachSidewalk, { left: 1250, top: 1724, width: 280, height: 34 }]} />
-      <View style={[styles.bridgeApproachSidewalk, { left: 1250, top: 1882, width: 280, height: 34 }]} />
+      <View style={[styles.bridgeApproachSidewalk, { left: 1370, top: 1724, width: 210, height: 34 }]} />
+      <View style={[styles.bridgeApproachSidewalk, { left: 1370, top: 1882, width: 210, height: 34 }]} />
     </>
   );
 }
@@ -221,8 +315,8 @@ function BridgeApproachLayer() {
 function BoatDockLayer() {
   return (
     <>
-      <BoatDock side="west" x={356} y={1714} label="WEST BOAT DOCK" />
-      <BoatDock side="east" x={1200} y={1714} label="EAST BOAT DOCK" />
+      <BoatDock side="west" x={255} y={535} label="BOATING DOCK" />
+      <BoatDock side="east" x={280} y={7770} label="FAR SEA DOCK" />
     </>
   );
 }
@@ -244,7 +338,7 @@ function BoatDock({ side, x, y, label }: { side: ShipSide; x: number; y: number;
       </View>
       <View style={styles.dockLabel}>
         <Text style={styles.dockLabelText}>{label}</Text>
-        <Text style={styles.dockHintText}>BOARD SHIP</Text>
+        <Text style={styles.dockHintText}>ENTER BOAT</Text>
       </View>
     </View>
   );
@@ -430,8 +524,10 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const [activeDirections, setActiveDirections] = useState<Direction[]>([]);
   const activeDirectionsRef = useRef<Direction[]>([]);
   const [isFlying, setIsFlying] = useState(false);
-  const [isShipRiding, setIsShipRiding] = useState(false);
-  const [shipStartSide, setShipStartSide] = useState<ShipSide>('west');
+  const [playerMode, setPlayerMode] = useState<PlayerMode>('walking');
+  const playerModeRef = useRef<PlayerMode>('walking');
+  const [boat, setBoat] = useState<BoatState>(() => boatSpawnForDock('west'));
+  const boatRef = useRef<BoatState>(boat);
   const [flightDestinationId, setFlightDestinationId] = useState<WorldLocationId>('playerHouse');
   const [caughtByPolice, setCaughtByPolice] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -470,18 +566,85 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
 
   const nearbyLocation = useMemo(() => nearestLocation(player), [player]);
   const nearbyDock = useMemo(() => nearestShipDock(player), [player]);
-  const cameraX = clamp(width / 2 - player.x, width - WORLD_WIDTH, 0);
-  const cameraY = clamp(height / 2 - player.y, height - WORLD_HEIGHT, 0);
+  const boatDock = useMemo(() => nearestDockToRect({ x: boat.x, y: boat.y, width: BOAT_WORLD_WIDTH, height: BOAT_WORLD_HEIGHT }), [boat]);
+  const cameraTarget = playerMode === 'driving_boat' ? { x: boat.x + BOAT_WORLD_WIDTH / 2, y: boat.y + BOAT_WORLD_HEIGHT / 2 } : { x: player.x, y: player.y };
+  const lookAheadDistance = playerMode === 'driving_boat' ? Math.min(170, Math.abs(boat.speed) * 1.7) : 0;
+  const lookAheadX = playerMode === 'driving_boat' ? Math.cos((boat.heading * Math.PI) / 180) * lookAheadDistance : 0;
+  const lookAheadY = playerMode === 'driving_boat' ? Math.sin((boat.heading * Math.PI) / 180) * lookAheadDistance : 0;
+  const cameraX = clamp(width / 2 - cameraTarget.x - lookAheadX, width - WORLD_WIDTH, 0);
+  const cameraY = clamp(height / 2 - cameraTarget.y - lookAheadY, height - WORLD_HEIGHT, 0);
 
   useEffect(() => {
     activeDirectionsRef.current = activeDirections;
   }, [activeDirections]);
 
   useEffect(() => {
+    playerModeRef.current = playerMode;
+  }, [playerMode]);
+
+  useEffect(() => {
     const tick = (timestamp: number) => {
       if (lastTimestampRef.current === null) lastTimestampRef.current = timestamp;
       const deltaSeconds = Math.min((timestamp - lastTimestampRef.current) / 1000, 0.05);
       lastTimestampRef.current = timestamp;
+
+      if (playerModeRef.current === 'driving_boat') {
+        const currentBoat = boatRef.current;
+        const directions = activeDirectionsRef.current;
+        const steering = (directions.includes('left') ? -1 : 0) + (directions.includes('right') ? 1 : 0);
+        const throttle = directions.includes('up') ? 1 : directions.includes('down') ? -0.7 : 0;
+        const heading = (currentBoat.heading + steering * 96 * deltaSeconds + 360) % 360;
+        const rawSpeed = currentBoat.speed + throttle * 120 * deltaSeconds - Math.sign(currentBoat.speed) * 14 * deltaSeconds;
+        const speed = Math.abs(rawSpeed) < 1 ? 0 : clamp(rawSpeed, -45, 145);
+        const radians = (heading * Math.PI) / 180;
+        const candidate = {
+          x: currentBoat.x + Math.cos(radians) * speed * deltaSeconds,
+          y: currentBoat.y + Math.sin(radians) * speed * deltaSeconds,
+          width: BOAT_WORLD_WIDTH,
+          height: BOAT_WORLD_HEIGHT,
+        };
+        const canMoveBoat = isBoatDrivableAt(candidate);
+        const nextBoat = {
+          ...currentBoat,
+          x: canMoveBoat ? clamp(candidate.x, 0, WORLD_WIDTH - BOAT_WORLD_WIDTH) : currentBoat.x,
+          y: canMoveBoat ? clamp(candidate.y, 0, WORLD_HEIGHT - BOAT_WORLD_HEIGHT) : currentBoat.y,
+          heading,
+          speed: canMoveBoat ? speed : 0,
+          fuel: Math.max(0, currentBoat.fuel - Math.abs(speed) * 0.004 * deltaSeconds),
+          isMoving: canMoveBoat && Math.abs(speed) > 2,
+        };
+
+        boatRef.current = nextBoat;
+        setBoat(nextBoat);
+
+        const attachedPlayer = {
+          x: nextBoat.x + 34,
+          y: nextBoat.y + 10,
+          direction: 'down' as Direction,
+          isMoving: nextBoat.isMoving,
+        };
+        const attachedBoss = {
+          x: nextBoat.x + 82,
+          y: nextBoat.y + 12,
+          direction: 'down' as Direction,
+          isMoving: false,
+        };
+        playerRef.current = attachedPlayer;
+        bossRef.current = attachedBoss;
+        setPlayer(attachedPlayer);
+        setBoss(attachedBoss);
+        setPlayerAction('idle');
+
+        if (!canMoveBoat && Math.abs(speed) > 6) {
+          setMessage('Boat blocked. Stay inside the real river lane and avoid bridge edges.');
+        } else {
+          const dock = nearestDockToRect({ x: nextBoat.x, y: nextBoat.y, width: BOAT_WORLD_WIDTH, height: BOAT_WORLD_HEIGHT });
+          setMessage(dock ? 'Dock reached. Press EXIT BOAT to continue walking.' : 'Boat mode: FRONT moves forward, BACK reverses, LEFT/RIGHT steer through the long sea.');
+        }
+
+        frameRef.current = requestAnimationFrame(tick);
+        return;
+      }
 
       const current = playerRef.current;
       const vector = movementVector(activeDirectionsRef.current);
@@ -510,7 +673,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
       if (waterHit) {
         activeDirectionsRef.current = [];
         setActiveDirections([]);
-        setMessage('Splash! Luna sank in the water. Use the bridge road to cross the river.');
+        setMessage('Splash! Water is boat-only. Walk to BOATING DOCK, press INTERACT, then use FRONT/BACK and LEFT/RIGHT to drive the boat.');
       } else if (nextPlayer.isMoving) {
         lastSafePlayerRef.current = nextPlayer;
       }
@@ -603,16 +766,19 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
 
   const enterNearbyLocation = () => {
     if (nearbyDock) {
-      setShipStartSide(nearbyDock.side);
-      setIsShipRiding(true);
+      const nextBoat = boatSpawnForDock(nearbyDock.side);
+      boatRef.current = nextBoat;
+      setBoat(nextBoat);
+      setPlayerMode('driving_boat');
+      playerModeRef.current = 'driving_boat';
       setActiveDirections([]);
       activeDirectionsRef.current = [];
-      setMessage('Luna and the Boss boarded the ship. Use the ship controls to cross the river.');
+      setMessage('Luna and the Boss entered the boat. Drive the long sea route from the Boating Dock.');
       return;
     }
 
     if (!nearbyLocation) {
-      setMessage('Move near a location entrance or bridge dock to interact.');
+      setMessage('Move near a location entrance or boat dock to interact.');
       return;
     }
 
@@ -646,12 +812,21 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     setIsFlying(true);
   };
 
-  const dockShip = (side: ShipSide) => {
-    const dock = SHIP_DOCK_ZONES.find((item) => item.side === side) ?? SHIP_DOCK_ZONES[0];
+  const brakeBoat = () => {
+    boatRef.current = { ...boatRef.current, speed: 0, isMoving: false };
+    setBoat(boatRef.current);
+  };
+
+  const exitBoat = () => {
+    const dock = nearestDockToRect({ x: boatRef.current.x, y: boatRef.current.y, width: BOAT_WORLD_WIDTH, height: BOAT_WORLD_HEIGHT });
+    if (!dock) {
+      setMessage('Find a dock or shoreline exit point before leaving the boat.');
+      return;
+    }
     const nextPlayer = {
-      x: dock.side === 'west' ? 432 : 1260,
-      y: 1810,
-      direction: dock.side === 'west' ? 'right' as Direction : 'left' as Direction,
+      x: dock.side === 'west' ? 330 : 360,
+      y: dock.side === 'west' ? 560 : 7770,
+      direction: dock.side === 'west' ? 'down' as Direction : 'up' as Direction,
       isMoving: false,
     };
     const nextBoss = {
@@ -666,8 +841,11 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     setPlayer(nextPlayer);
     setBoss(nextBoss);
     lastFootstepRef.current = { x: nextPlayer.x, y: nextPlayer.y };
-    setIsShipRiding(false);
-    setMessage(`Ship docked on the ${side} side of the bridge. Boss came with Luna.`);
+    setPlayerMode('walking');
+    playerModeRef.current = 'walking';
+    setActiveDirections([]);
+    activeDirectionsRef.current = [];
+    setMessage(`Boat docked on the ${dock.side} side of the bridge. Boss came with Luna.`);
   };
 
   const simulateCaught = () => {
@@ -699,19 +877,6 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         worldLocations={worldLocations}
         onLand={travelTo}
         onReturnToAirport={() => setIsFlying(false)}
-      />
-    );
-  }
-
-  if (isShipRiding) {
-    return (
-      <ShipRide
-        startSide={shipStartSide}
-        onDock={dockShip}
-        onReturn={() => {
-          setIsShipRiding(false);
-          setMessage('Ship ride cancelled. Return to the bridge dock to board again.');
-        }}
       />
     );
   }
@@ -769,7 +934,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
       <View style={[styles.world, { transform: [{ translateX: cameraX }, { translateY: cameraY }] }]}>
         <FullWorldGrass width={WORLD_WIDTH} height={WORLD_HEIGHT} />
         <LandscapeLayer />
-        {worldObjects.map((object) => (
+        {[...worldObjects].sort((a, b) => worldObjectLayer(a) - worldObjectLayer(b)).map((object) => (
           <View
             key={object.id}
             style={[
@@ -790,7 +955,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
           >
             {object.kind === 'road' ? <RoadMarkings object={object} /> : null}
             {object.kind === 'bridge' ? <BridgeDetails object={object} /> : null}
-            {object.kind === 'water' ? <WaterDetails /> : null}
+            {object.kind === 'water' ? <WaterDetails object={object} /> : null}
             {object.kind !== 'road' && object.kind !== 'bridge' && object.kind !== 'water' && object.kind !== 'footpath' ? (
               <Text style={styles.objectLabel}>{object.label}</Text>
             ) : null}
@@ -802,6 +967,10 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         {worldLocations.map((location) => (
           <LocationTile key={location.id} location={location} caughtByPolice={caughtByPolice} />
         ))}
+
+        <View style={[styles.boatActor, { transform: [{ translateX: boat.x }, { translateY: boat.y }] }]}>
+          <BoatVehicle heading={boat.heading} speed={boat.speed} />
+        </View>
 
         {npcs.map((npc) => (
           <View key={npc.id} style={[styles.actor, { transform: [{ translateX: npc.x }, { translateY: npc.y }] }]}>
@@ -816,39 +985,53 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
           </View>
         ))}
 
-        <View style={[styles.actor, styles.bossActor, { transform: [{ translateX: boss.x }, { translateY: boss.y }] }]}>
-          <SpriteCharacter characterId="victorKane" direction={boss.direction} isMoving={boss.isMoving} currentAction={boss.isMoving ? 'walk' : 'idle'} scale={2} />
-        </View>
-        <View style={[styles.actor, styles.playerActor, { transform: [{ translateX: player.x }, { translateY: player.y }] }]}>
-          <SpriteCharacter characterId="lunaCrown" direction={player.direction} isMoving={player.isMoving} currentAction={playerAction} scale={2.15} />
-        </View>
+        {playerMode === 'walking' ? (
+          <>
+            <View style={[styles.actor, styles.bossActor, { transform: [{ translateX: boss.x }, { translateY: boss.y }] }]}>
+              <SpriteCharacter characterId="victorKane" direction={boss.direction} isMoving={boss.isMoving} currentAction={boss.isMoving ? 'walk' : 'idle'} scale={2} />
+            </View>
+            <View style={[styles.actor, styles.playerActor, { transform: [{ translateX: player.x }, { translateY: player.y }] }]}>
+              <SpriteCharacter characterId="lunaCrown" direction={player.direction} isMoving={player.isMoving} currentAction={playerAction} scale={2.15} />
+            </View>
+          </>
+        ) : null}
       </View>
 
       <View style={styles.hud}>
         <Text style={styles.title}>Sin Kingdom World</Text>
         <Text style={styles.status}>
-          {nearbyDock ? 'Bridge dock: Board ship with Boss and cross the river.' : nearbyLocation ? `${nearbyLocation.name}: ${nearbyLocation.interaction}` : message}
+          {playerMode === 'driving_boat'
+            ? message
+            : nearbyDock
+              ? 'Boating Dock: Enter boat with Boss and drive the long sea.'
+              : nearbyLocation
+                ? `${nearbyLocation.name}: ${nearbyLocation.interaction}`
+                : message}
         </Text>
       </View>
       <MiniWorldMap player={player} boss={boss} npcs={npcs} footsteps={footsteps} />
-      <View style={styles.actions}>
-        <Pressable style={styles.primaryButton} onPress={enterNearbyLocation}>
-          <Text style={styles.primaryButtonText}>{nearbyDock ? 'BOARD SHIP' : nearbyLocation ? 'INTERACT / ENTER' : 'INTERACT'}</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={simulateCaught}>
-          <Text style={styles.secondaryButtonText}>POLICE CAUGHT TEST</Text>
-        </Pressable>
-        <Pressable style={[styles.secondaryButton, isRunning && styles.activeButton]} onPress={() => setIsRunning((value) => !value)}>
-          <Text style={styles.secondaryButtonText}>RUN</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={shoot}>
-          <Text style={styles.secondaryButtonText}>SHOOT</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={onBackToHideout}>
-          <Text style={styles.secondaryButtonText}>HIDEOUT</Text>
-        </Pressable>
-      </View>
-      <DPad activeDirections={activeDirections} onDirectionPressIn={pressDirection} onDirectionPressOut={releaseDirection} />
+      {playerMode === 'walking' ? (
+        <View style={styles.actions}>
+          <Pressable style={styles.primaryButton} onPress={enterNearbyLocation}>
+            <Text style={styles.primaryButtonText}>{nearbyDock ? 'ENTER BOAT' : nearbyLocation ? 'INTERACT / ENTER' : 'INTERACT'}</Text>
+          </Pressable>
+          <Pressable style={styles.secondaryButton} onPress={simulateCaught}>
+            <Text style={styles.secondaryButtonText}>POLICE CAUGHT TEST</Text>
+          </Pressable>
+          <Pressable style={[styles.secondaryButton, isRunning && styles.activeButton]} onPress={() => setIsRunning((value) => !value)}>
+            <Text style={styles.secondaryButtonText}>RUN</Text>
+          </Pressable>
+          <Pressable style={styles.secondaryButton} onPress={shoot}>
+            <Text style={styles.secondaryButtonText}>SHOOT</Text>
+          </Pressable>
+          <Pressable style={styles.secondaryButton} onPress={onBackToHideout}>
+            <Text style={styles.secondaryButtonText}>HIDEOUT</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <BoatControls speed={boat.speed} fuel={boat.fuel} canExit={Boolean(boatDock)} onBrake={brakeBoat} onExit={exitBoat} />
+      )}
+      <DPad activeDirections={activeDirections} onDirectionPressIn={pressDirection} onDirectionPressOut={releaseDirection} mode={playerMode === 'driving_boat' ? 'boat' : 'walking'} />
     </View>
   );
 }
@@ -993,6 +1176,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   road: {
+    zIndex: 8,
     borderWidth: 0,
     borderColor: '#4f5960',
     overflow: 'hidden',
@@ -1001,6 +1185,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
   bridge: {
+    zIndex: 12,
     borderWidth: 0,
     borderRadius: 24,
     overflow: 'hidden',
@@ -1017,15 +1202,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderTopWidth: 6,
     borderBottomWidth: 6,
-    borderColor: '#9f9586',
-  },
-  bridgeApproachRoadVertical: {
-    position: 'absolute',
-    borderRadius: 0,
-    backgroundColor: '#22272f',
-    overflow: 'hidden',
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
     borderColor: '#9f9586',
   },
   bridgeApproachSidewalk: {
@@ -1308,8 +1484,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   water: {
+    zIndex: 1,
     borderWidth: 2,
-    borderColor: 'rgba(151,221,241,0.42)',
+    borderColor: 'rgba(172,232,238,0.72)',
     borderRadius: 34,
     overflow: 'hidden',
     opacity: 0.98,
@@ -1317,18 +1494,52 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.45,
     shadowRadius: 12,
   },
+  waterCurrentBand: {
+    position: 'absolute',
+    height: 72,
+    borderRadius: 999,
+    backgroundColor: 'rgba(126,220,235,0.12)',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(215,255,255,0.1)',
+  },
   waterRipple: {
     position: 'absolute',
-    height: 5,
+    height: 6,
     borderRadius: 10,
-    backgroundColor: 'rgba(192,244,255,0.55)',
+    backgroundColor: 'rgba(204,250,255,0.72)',
+  },
+  waterFoamDot: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(232,255,255,0.55)',
+  },
+  waterShoreTop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 10,
+    backgroundColor: 'rgba(232,217,150,0.5)',
+  },
+  waterShoreBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 10,
+    backgroundColor: 'rgba(232,217,150,0.5)',
   },
   lilyPad: {
     position: 'absolute',
-    width: 24,
-    height: 13,
+    width: 30,
+    height: 16,
     borderRadius: 14,
-    backgroundColor: 'rgba(76,150,65,0.82)',
+    backgroundColor: 'rgba(80,158,70,0.84)',
+    borderWidth: 1,
+    borderColor: 'rgba(151,213,99,0.58)',
   },
   objectLabel: {
     color: '#fff',
@@ -1342,6 +1553,12 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     alignItems: 'center',
+  },
+  boatActor: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    zIndex: 7,
   },
   playerActor: {
     zIndex: 20,

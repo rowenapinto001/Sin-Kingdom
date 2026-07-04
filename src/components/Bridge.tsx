@@ -15,6 +15,26 @@ export default function Bridge({ config }: BridgeProps) {
       <View pointerEvents="none" style={[styles.edgeFade, styles.edgeFadeRight]} />
       <View pointerEvents="none" style={[styles.edgeFadeHorizontal, styles.edgeFadeTop]} />
       <View pointerEvents="none" style={[styles.edgeFadeHorizontal, styles.edgeFadeBottom]} />
+      <View pointerEvents="none" style={[styles.curbStrip, styles.curbTop]}>
+        {Array.from({ length: 22 }).map((_, index) => (
+          <View key={`top-${index}`} style={[styles.curbTileLineVertical, { left: index * 46 }]} />
+        ))}
+      </View>
+      <View pointerEvents="none" style={[styles.curbStrip, styles.curbBottom]}>
+        {Array.from({ length: 22 }).map((_, index) => (
+          <View key={`bottom-${index}`} style={[styles.curbTileLineVertical, { left: index * 46 }]} />
+        ))}
+      </View>
+      <View pointerEvents="none" style={[styles.curbStripSide, styles.curbLeft]}>
+        {Array.from({ length: 13 }).map((_, index) => (
+          <View key={`left-${index}`} style={[styles.curbTileLineHorizontal, { top: index * 44 }]} />
+        ))}
+      </View>
+      <View pointerEvents="none" style={[styles.curbStripSide, styles.curbRight]}>
+        {Array.from({ length: 13 }).map((_, index) => (
+          <View key={`right-${index}`} style={[styles.curbTileLineHorizontal, { top: index * 44 }]} />
+        ))}
+      </View>
       <View pointerEvents="none" style={styles.outerStoneFrame} />
       <View pointerEvents="none" style={[styles.cornerBlock, styles.cornerTopLeft]} />
       <View pointerEvents="none" style={[styles.cornerBlock, styles.cornerTopRight]} />
@@ -96,30 +116,89 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.55,
     shadowRadius: 10,
   },
+  curbStrip: {
+    position: 'absolute',
+    left: 8,
+    right: 8,
+    height: 30,
+    backgroundColor: '#b4aa91',
+    borderTopWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: '#e2d19a',
+    overflow: 'hidden',
+  },
+  curbTop: {
+    top: 8,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+  },
+  curbBottom: {
+    bottom: 8,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+  },
+  curbStripSide: {
+    position: 'absolute',
+    top: 8,
+    bottom: 8,
+    width: 30,
+    backgroundColor: '#b4aa91',
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderColor: '#e2d19a',
+    overflow: 'hidden',
+  },
+  curbLeft: {
+    left: 8,
+    borderTopLeftRadius: 18,
+    borderBottomLeftRadius: 18,
+  },
+  curbRight: {
+    right: 8,
+    borderTopRightRadius: 18,
+    borderBottomRightRadius: 18,
+  },
+  curbTileLineVertical: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    backgroundColor: 'rgba(68,57,44,0.34)',
+  },
+  curbTileLineHorizontal: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: 'rgba(68,57,44,0.34)',
+  },
   cornerBlock: {
     position: 'absolute',
-    width: 74,
-    height: 74,
-    borderRadius: 16,
-    backgroundColor: '#8d826c',
+    width: 92,
+    height: 92,
+    borderRadius: 22,
+    backgroundColor: '#9f947b',
     borderWidth: 4,
-    borderColor: '#d8c991',
+    borderColor: '#ead99a',
+    shadowColor: '#000',
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
   },
   cornerTopLeft: {
-    left: -16,
-    top: -16,
+    left: 10,
+    top: 10,
   },
   cornerTopRight: {
-    right: -16,
-    top: -16,
+    right: 10,
+    top: 10,
   },
   cornerBottomLeft: {
-    left: -16,
-    bottom: -16,
+    left: 10,
+    bottom: 10,
   },
   cornerBottomRight: {
-    right: -16,
-    bottom: -16,
+    right: 10,
+    bottom: 10,
   },
   cornerPin: {
     position: 'absolute',

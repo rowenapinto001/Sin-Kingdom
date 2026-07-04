@@ -2,7 +2,7 @@ import { worldRoadObjects } from '../data/worldRoads';
 import { WorldLocation, WorldNpc, WorldObject } from './worldTypes';
 
 export const WORLD_WIDTH = 5200;
-export const WORLD_HEIGHT = 3800;
+export const WORLD_HEIGHT = 9000;
 export const PLAYER_WORLD_SIZE = 54;
 export const PLAYER_WORLD_SPEED = 210;
 export const PLAYER_HOUSE_SPAWN = { x: 2420, y: 1905 };
@@ -238,7 +238,13 @@ export const worldLocations: WorldLocation[] = [
 
 export const worldObjects: WorldObject[] = [
   ...worldRoadObjects,
-  { id: 'lake', label: 'Lake', kind: 'water', x: 120, y: 280, width: 620, height: 430, color: '#0b4964', blocked: true },
+  { id: 'great-west-sea', label: 'Great West Sea', kind: 'water', x: 40, y: 620, width: 1260, height: 8120, color: '#087ca4', blocked: true },
+  { id: 'lake', label: 'Boating Bay', kind: 'water', x: 120, y: 280, width: 760, height: 510, color: '#0b4964', blocked: true },
+  { id: 'sea-island-1', label: 'Palm Island', kind: 'sand', x: 250, y: 1420, width: 210, height: 140, color: '#b88945', blocked: true },
+  { id: 'sea-island-2', label: 'Rock Island', kind: 'sand', x: 790, y: 2380, width: 230, height: 150, color: '#8b764f', blocked: true },
+  { id: 'sea-island-3', label: 'Tiny Resort Island', kind: 'grass', x: 360, y: 3820, width: 260, height: 170, color: '#2d7c3d', blocked: true },
+  { id: 'sea-island-4', label: 'Far Palm Island', kind: 'sand', x: 760, y: 5650, width: 280, height: 180, color: '#bd9250', blocked: true },
+  { id: 'sea-island-5', label: 'End Sea Island', kind: 'grass', x: 260, y: 7600, width: 320, height: 220, color: '#337d40', blocked: true },
   { id: 'desert-sand', label: 'Sand Route', kind: 'sand', x: 4180, y: 3200, width: 920, height: 560, color: '#7d5728' },
   { id: 'desert-oasis', label: 'Deep Oasis', kind: 'water', x: 4860, y: 3540, width: 180, height: 86, color: '#187f8d', blocked: true },
   { id: 'party-stage', label: 'Dance Stage', kind: 'stage', x: 3468, y: 360, width: 190, height: 60, color: '#ff2e8a' },

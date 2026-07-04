@@ -5,14 +5,15 @@ type DPadProps = {
   activeDirections: Direction[];
   onDirectionPressIn: (direction: Direction) => void;
   onDirectionPressOut: (direction: Direction) => void;
+  mode?: 'walking' | 'boat';
 };
 
-export default function DPad({ activeDirections, onDirectionPressIn, onDirectionPressOut }: DPadProps) {
+export default function DPad({ activeDirections, onDirectionPressIn, onDirectionPressOut, mode = 'walking' }: DPadProps) {
   const buttons: Array<{ direction: Direction; label: string; style: object }> = [
-    { direction: 'up', label: 'UP', style: styles.up },
+    { direction: 'up', label: mode === 'boat' ? 'FRONT' : 'UP', style: styles.up },
     { direction: 'left', label: 'LEFT', style: styles.left },
     { direction: 'right', label: 'RIGHT', style: styles.right },
-    { direction: 'down', label: 'DOWN', style: styles.down },
+    { direction: 'down', label: mode === 'boat' ? 'BACK' : 'DOWN', style: styles.down },
   ];
 
   return (
@@ -60,7 +61,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
   },
   up: {

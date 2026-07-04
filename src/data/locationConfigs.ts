@@ -1,5 +1,6 @@
 import { ImageSourcePropType } from 'react-native';
 import { Rect, WorldLocationId } from '../world/worldTypes';
+import { friendsHouseExterior } from './friendsHouseExteriorConfig';
 
 export type LocationInteractionType =
   | 'home'
@@ -121,15 +122,25 @@ export const locationConfigs: Record<WorldLocationId, LocationConfig> = {
     id: 'friendsHouse',
     name: 'Friends House',
     description: 'Arion Vale strategy house with living room talk scene and Boss meeting area.',
-    image: require('../../assets/locations/friends_house.png'),
-    x: 1375,
-    y: 1450,
-    width: 230,
-    height: 165,
+    image: require('../../assets/locations/friends_house_exterior.png'),
+    x: friendsHouseExterior.x,
+    y: friendsHouseExterior.y,
+    width: friendsHouseExterior.width,
+    height: friendsHouseExterior.height,
     enterable: true,
     interactionType: 'friend',
-    collisionBox: { x: 1403, y: 1476, width: 176, height: 100 },
-    interactionZone: { x: 1335, y: 1412, width: 310, height: 245 },
+    collisionBox: {
+      x: friendsHouseExterior.x + friendsHouseExterior.house.x + 40,
+      y: friendsHouseExterior.y + friendsHouseExterior.house.y + 38,
+      width: friendsHouseExterior.house.width - 80,
+      height: friendsHouseExterior.house.height - 96,
+    },
+    interactionZone: {
+      x: friendsHouseExterior.x + friendsHouseExterior.frontDoorZone.x,
+      y: friendsHouseExterior.y + friendsHouseExterior.frontDoorZone.y,
+      width: friendsHouseExterior.frontDoorZone.width,
+      height: friendsHouseExterior.frontDoorZone.height,
+    },
   },
   pinkPalace: {
     id: 'pinkPalace',

@@ -1,4 +1,5 @@
 import { worldRoadObjects } from '../data/worldRoads';
+import { friendsHouseExterior } from '../data/friendsHouseExteriorConfig';
 import { WorldLocation, WorldNpc, WorldObject } from './worldTypes';
 
 export const WORLD_WIDTH = 5200;
@@ -103,14 +104,14 @@ export const worldLocations: WorldLocation[] = [
     id: 'friendsHouse',
     name: 'Friends House',
     theme: 'Arion Vale strategy house',
-    x: 1375,
-    y: 1450,
-    width: 230,
-    height: 165,
+    x: friendsHouseExterior.x,
+    y: friendsHouseExterior.y,
+    width: friendsHouseExterior.width,
+    height: friendsHouseExterior.height,
     color: '#2b5f64',
     accent: '#a8fff1',
     enterable: true,
-    interaction: 'Talk to Arion Vale',
+    interaction: 'Enter Friends House from the front door',
     interiorTitle: 'Friends House',
     interiorDescription: 'Arion Vale waits in a living room discussion area while the Boss sits nearby.',
   },

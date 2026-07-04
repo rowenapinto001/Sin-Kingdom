@@ -97,7 +97,7 @@ const mainRoads: WorldObject[] = [
   ...createCurvedRoad('road-friends-house-drive', 'Friends House Drive', [
     { x: 1780, y: 1815 },
     { x: 1780, y: 1685 },
-    { x: 1588, y: 1605 },
+    { x: 1900, y: 1470 },
   ], districtRoad),
   ...createCurvedRoad('road-player-house-entry', 'Player House Drive', [
     { x: 2475, y: 1885 },
@@ -158,7 +158,7 @@ export const worldRoadDecorations: RoadDecoration[] = [
   createCrosswalk('crosswalk-garage', { x: 2305, y: 940 }, false),
   createCrosswalk('crosswalk-party', { x: 3520, y: 560 }),
   createCrosswalk('crosswalk-police', { x: 4750, y: 690 }, false),
-  createCrosswalk('crosswalk-friends', { x: 1015, y: 1815 }),
+  createCrosswalk('crosswalk-friends', { x: 1900, y: 1470 }),
   createCrosswalk('crosswalk-player-house', { x: 2475, y: 1885 }),
   createCrosswalk('crosswalk-garden', { x: 2475, y: 2260 }, false),
   createCrosswalk('crosswalk-doorway', { x: 3570, y: 2260 }, false),

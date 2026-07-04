@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Bridge from '../components/Bridge';
 import BoatControls from '../components/BoatControls';
 import BoatVehicle from '../components/BoatVehicle';
@@ -25,6 +25,8 @@ import {
 import { Rect, WorldLocation, WorldLocationId, WorldNpc, WorldObject } from './worldTypes';
 import AirplaneFlight from './locations/AirplaneFlight';
 import AirportInterior from './locations/AirportInterior';
+import FriendsHouseExterior from './locations/FriendsHouseExterior';
+import FriendsHouseInterior from './locations/FriendsHouseInterior';
 import LandscapeLayer, { FullWorldGrass } from './gardenDecorations';
 
 type NpcRuntime = WorldNpc & {
@@ -111,15 +113,8 @@ function isBlockedByBridgeRails(rect: Rect) {
 }
 
 function isWaterAt(rect: Rect) {
-  const center = rectCenter(rect);
-  return (
-    worldObjects.some((object) => object.kind === 'water' && pointInRect(center, object)) ||
-    allBridgeConfigs.some((bridge) => {
-      if (!pointInRect(center, bridge.bounds)) return false;
-      if (bridge.walkableAreas.some((area) => pointInRect(center, area))) return false;
-      return bridge.waterAreas.some((area) => pointInRect(center, area));
-    })
-  );
+  void rect;
+  return false;
 }
 
 function isBoatDrivableAt(rect: Rect) {
@@ -166,6 +161,10 @@ function nearestLocation(actor: WorldActor) {
     rectsOverlap({ x: actorCenter.x - 4, y: actorCenter.y - 4, width: 8, height: 8 }, location.interactionZone),
   );
   return locationConfig ? worldLocations.find((location) => location.id === locationConfig.id) : undefined;
+}
+
+function isBlockedByLocation(rect: Rect) {
+  return allLocationConfigs.some((location) => rectsOverlap(rect, location.collisionBox));
 }
 
 function nearestShipDock(actor: WorldActor) {
@@ -220,17 +219,20 @@ function RoadMarkings({ object }: { object: Rect }) {
   );
 }
 
-function WaterDetails({ object }: { object: Rect }) {
+function WaterDetails({ object, waveShift }: { object: Rect; waveShift: Animated.Value }) {
   const columns = Math.max(4, Math.ceil(object.width / 150));
   const rows = Math.max(3, Math.ceil(object.height / 125));
   const rippleCount = Math.min(190, columns * rows);
   const lilyCount = Math.min(85, Math.max(8, Math.floor((object.width * object.height) / 82000)));
   const bandCount = Math.min(34, Math.max(3, Math.floor(object.height / 270)));
+  const waveTranslate = waveShift.interpolate({ inputRange: [0, 1], outputRange: [-90, 90] });
+  const reverseWaveTranslate = waveShift.interpolate({ inputRange: [0, 1], outputRange: [80, -80] });
 
   return (
     <>
+      <View style={styles.waterDepthGlow} />
       {Array.from({ length: bandCount }).map((_, index) => (
-        <View
+        <Animated.View
           key={`current-${index}`}
           style={[
             styles.waterCurrentBand,
@@ -238,7 +240,10 @@ function WaterDetails({ object }: { object: Rect }) {
               left: index % 2 === 0 ? -80 : 60,
               top: 54 + index * 255,
               width: object.width + 160,
-              transform: [{ rotate: index % 2 === 0 ? '-3deg' : '3deg' }],
+              transform: [
+                { translateX: index % 2 === 0 ? waveTranslate : reverseWaveTranslate },
+                { rotate: index % 2 === 0 ? '-3deg' : '3deg' },
+              ],
             },
           ]}
         />
@@ -247,7 +252,7 @@ function WaterDetails({ object }: { object: Rect }) {
         const row = Math.floor(index / columns);
         const col = index % columns;
         return (
-          <View
+          <Animated.View
             key={index}
             style={[
               styles.waterRipple,
@@ -256,11 +261,29 @@ function WaterDetails({ object }: { object: Rect }) {
                 top: 32 + row * 118,
                 width: 54 + ((index + row) % 4) * 18,
                 opacity: 0.28 + ((index % 5) * 0.06),
+                transform: [{ translateX: row % 2 === 0 ? waveTranslate : reverseWaveTranslate }],
               },
             ]}
           />
         );
       })}
+      {Array.from({ length: Math.min(70, Math.max(12, Math.floor(rippleCount / 2))) }).map((_, index) => (
+        <Animated.View
+          key={`shine-${index}`}
+          style={[
+            styles.waterShineLine,
+            {
+              left: 18 + ((index * 211) % Math.max(100, object.width - 120)),
+              top: 22 + ((index * 179) % Math.max(100, object.height - 100)),
+              width: 84 + (index % 4) * 28,
+              transform: [
+                { translateX: index % 2 === 0 ? reverseWaveTranslate : waveTranslate },
+                { rotate: index % 3 === 0 ? '-9deg' : '7deg' },
+              ],
+            },
+          ]}
+        />
+      ))}
       {Array.from({ length: lilyCount }).map((_, index) => (
         <View
           key={`foam-${index}`}
@@ -288,6 +311,12 @@ function WaterDetails({ object }: { object: Rect }) {
       ))}
       <View style={styles.waterShoreTop} />
       <View style={styles.waterShoreBottom} />
+      <View style={styles.waterShoreLeft} />
+      <View style={styles.waterShoreRight} />
+      <View style={[styles.waterCornerStone, styles.waterCornerTopLeft]} />
+      <View style={[styles.waterCornerStone, styles.waterCornerTopRight]} />
+      <View style={[styles.waterCornerStone, styles.waterCornerBottomLeft]} />
+      <View style={[styles.waterCornerStone, styles.waterCornerBottomRight]} />
     </>
   );
 }
@@ -333,6 +362,15 @@ function BoatDock({ side, x, y, label }: { side: ShipSide; x: number; y: number;
       <View style={[styles.mapBoat, { transform: [{ rotate: boatRotation }] }]}>
         <View style={styles.mapBoatWake} />
         <View style={styles.mapBoatHull}>
+          <View style={styles.mapBoatSeatLeft}>
+            <SpriteCharacter characterId="lunaCrown" direction="down" isMoving={false} currentAction="idle" scale={0.72} />
+          </View>
+          <View style={styles.mapBoatWheel}>
+            <View style={styles.mapBoatWheelHub} />
+          </View>
+          <View style={styles.mapBoatSeatRight}>
+            <SpriteCharacter characterId="victorKane" direction="down" isMoving={false} currentAction="idle" scale={0.64} />
+          </View>
           <View style={styles.mapBoatCabin} />
         </View>
       </View>
@@ -341,6 +379,58 @@ function BoatDock({ side, x, y, label }: { side: ShipSide; x: number; y: number;
         <Text style={styles.dockHintText}>ENTER BOAT</Text>
       </View>
     </View>
+  );
+}
+
+function NpcBridgeBoats({ boatA, boatB }: { boatA: Animated.Value; boatB: Animated.Value }) {
+  const boatATranslateX = boatA.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 210, 28] });
+  const boatATranslateY = boatA.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 34, -18] });
+  const boatARotate = boatA.interpolate({ inputRange: [0, 0.5, 1], outputRange: ['-6deg', '8deg', '-4deg'] });
+  const boatBTranslateX = boatB.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -240, -26] });
+  const boatBTranslateY = boatB.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -30, 22] });
+  const boatBRotate = boatB.interpolate({ inputRange: [0, 0.5, 1], outputRange: ['184deg', '170deg', '190deg'] });
+
+  return (
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.npcWaterBoat,
+          {
+            left: 145,
+            top: 1608,
+            transform: [{ translateX: boatATranslateX }, { translateY: boatATranslateY }, { rotate: boatARotate }],
+          },
+        ]}
+      >
+        <View style={styles.npcBoatWake} />
+        <View style={styles.npcBoatHull}>
+          <View style={styles.npcBoatNose} />
+          <View style={styles.npcBoatSeat}>
+            <SpriteCharacter characterId="npcMan" direction="down" isMoving currentAction="idle" scale={0.74} />
+          </View>
+        </View>
+      </Animated.View>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.npcWaterBoat,
+          {
+            left: 1125,
+            top: 1972,
+            transform: [{ translateX: boatBTranslateX }, { translateY: boatBTranslateY }, { rotate: boatBRotate }],
+          },
+        ]}
+      >
+        <View style={styles.npcBoatWake} />
+        <View style={[styles.npcBoatHull, styles.npcBoatHullAlt]}>
+          <View style={styles.npcBoatNose} />
+          <View style={styles.npcBoatSeat}>
+            <SpriteCharacter characterId="npcWoman" direction="down" isMoving currentAction="idle" scale={0.74} />
+          </View>
+        </View>
+      </Animated.View>
+    </>
   );
 }
 
@@ -521,6 +611,9 @@ function MiniWorldMap({
 
 export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWorldMapProps) {
   const { width, height } = useWindowDimensions();
+  const waveShift = useRef(new Animated.Value(0)).current;
+  const npcBoatA = useRef(new Animated.Value(0)).current;
+  const npcBoatB = useRef(new Animated.Value(0)).current;
   const [activeDirections, setActiveDirections] = useState<Direction[]>([]);
   const activeDirectionsRef = useRef<Direction[]>([]);
   const [isFlying, setIsFlying] = useState(false);
@@ -573,6 +666,37 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const lookAheadY = playerMode === 'driving_boat' ? Math.sin((boat.heading * Math.PI) / 180) * lookAheadDistance : 0;
   const cameraX = clamp(width / 2 - cameraTarget.x - lookAheadX, width - WORLD_WIDTH, 0);
   const cameraY = clamp(height / 2 - cameraTarget.y - lookAheadY, height - WORLD_HEIGHT, 0);
+
+  useEffect(() => {
+    const waveAnimation = Animated.loop(
+      Animated.timing(waveShift, {
+        toValue: 1,
+        duration: 3800,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    const boatAAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(npcBoatA, { toValue: 1, duration: 6200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(npcBoatA, { toValue: 0, duration: 5600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    );
+    const boatBAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(npcBoatB, { toValue: 1, duration: 7000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(npcBoatB, { toValue: 0, duration: 6100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    );
+    waveAnimation.start();
+    boatAAnimation.start();
+    boatBAnimation.start();
+    return () => {
+      waveAnimation.stop();
+      boatAAnimation.stop();
+      boatBAnimation.stop();
+    };
+  }, [npcBoatA, npcBoatB, waveShift]);
 
   useEffect(() => {
     activeDirectionsRef.current = activeDirections;
@@ -658,15 +782,16 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         height: PLAYER_WORLD_SIZE,
       };
       const bridgeBlocked = isBlockedByBridgeRails(candidate);
+      const locationBlocked = isBlockedByLocation(candidate);
       const waterHit = isWaterAt(candidate);
       const nextPlayer = isMoving
         ? waterHit
           ? { ...lastSafePlayerRef.current, direction, isMoving: false }
           : {
-              x: bridgeBlocked ? current.x : clamp(candidate.x, 0, WORLD_WIDTH - PLAYER_WORLD_SIZE),
-              y: bridgeBlocked ? current.y : clamp(candidate.y, 0, WORLD_HEIGHT - PLAYER_WORLD_SIZE),
+              x: bridgeBlocked || locationBlocked ? current.x : clamp(candidate.x, 0, WORLD_WIDTH - PLAYER_WORLD_SIZE),
+              y: bridgeBlocked || locationBlocked ? current.y : clamp(candidate.y, 0, WORLD_HEIGHT - PLAYER_WORLD_SIZE),
               direction,
-              isMoving: !bridgeBlocked,
+              isMoving: !bridgeBlocked && !locationBlocked,
             }
         : { ...current, direction, isMoving: false };
 
@@ -881,6 +1006,10 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     );
   }
 
+  if (insideLocation?.id === 'friendsHouse') {
+    return <FriendsHouseInterior onExit={() => setInsideLocation(null)} onMissionStart={onStartMission} />;
+  }
+
   if (insideLocation) {
     const isAirport = insideLocation.id === 'airport';
     return (
@@ -955,7 +1084,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
           >
             {object.kind === 'road' ? <RoadMarkings object={object} /> : null}
             {object.kind === 'bridge' ? <BridgeDetails object={object} /> : null}
-            {object.kind === 'water' ? <WaterDetails object={object} /> : null}
+            {object.kind === 'water' ? <WaterDetails object={object} waveShift={waveShift} /> : null}
             {object.kind !== 'road' && object.kind !== 'bridge' && object.kind !== 'water' && object.kind !== 'footpath' ? (
               <Text style={styles.objectLabel}>{object.label}</Text>
             ) : null}
@@ -963,8 +1092,12 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         ))}
         <BridgeApproachLayer />
         <BoatDockLayer />
+        <NpcBridgeBoats boatA={npcBoatA} boatB={npcBoatB} />
         <RoadDecorationLayer />
-        {worldLocations.map((location) => (
+        {worldLocations.filter((location) => location.id === 'friendsHouse').map((location) => (
+          <FriendsHouseExterior key={location.id} x={location.x} y={location.y} />
+        ))}
+        {worldLocations.filter((location) => location.id !== 'friendsHouse').map((location) => (
           <LocationTile key={location.id} location={location} caughtByPolice={caughtByPolice} />
         ))}
 
@@ -1013,7 +1146,9 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
       {playerMode === 'walking' ? (
         <View style={styles.actions}>
           <Pressable style={styles.primaryButton} onPress={enterNearbyLocation}>
-            <Text style={styles.primaryButtonText}>{nearbyDock ? 'ENTER BOAT' : nearbyLocation ? 'INTERACT / ENTER' : 'INTERACT'}</Text>
+            <Text style={styles.primaryButtonText}>
+              {nearbyDock ? 'ENTER BOAT' : nearbyLocation?.id === 'friendsHouse' ? 'ENTER HOUSE' : nearbyLocation ? 'INTERACT / ENTER' : 'INTERACT'}
+            </Text>
           </Pressable>
           <Pressable style={styles.secondaryButton} onPress={simulateCaught}>
             <Text style={styles.secondaryButtonText}>POLICE CAUGHT TEST</Text>
@@ -1241,27 +1376,27 @@ const styles = StyleSheet.create({
   },
   mapBoat: {
     position: 'absolute',
-    left: 24,
-    top: 82,
-    width: 116,
-    height: 58,
+    left: 4,
+    top: 78,
+    width: 158,
+    height: 82,
     alignItems: 'center',
     justifyContent: 'center',
   },
   mapBoatWake: {
     position: 'absolute',
-    left: -18,
-    width: 56,
-    height: 14,
+    left: -24,
+    width: 82,
+    height: 20,
     borderRadius: 999,
     backgroundColor: 'rgba(220,255,255,0.62)',
   },
   mapBoatHull: {
-    width: 102,
-    height: 44,
-    borderRadius: 26,
+    width: 142,
+    height: 66,
+    borderRadius: 38,
     backgroundColor: '#f2b632',
-    borderWidth: 4,
+    borderWidth: 5,
     borderColor: '#fff0a8',
     shadowColor: '#000',
     shadowOpacity: 0.42,
@@ -1269,19 +1404,108 @@ const styles = StyleSheet.create({
   },
   mapBoatCabin: {
     position: 'absolute',
-    left: 36,
-    top: 8,
-    width: 34,
+    left: 58,
+    top: 18,
+    width: 28,
     height: 24,
     borderRadius: 8,
-    backgroundColor: '#4cc4df',
+    backgroundColor: '#1e8fb5',
     borderWidth: 2,
     borderColor: '#defbff',
+  },
+  mapBoatSeatLeft: {
+    position: 'absolute',
+    left: 18,
+    top: 10,
+    width: 34,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  mapBoatSeatRight: {
+    position: 'absolute',
+    right: 15,
+    top: 10,
+    width: 34,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  mapBoatWheel: {
+    position: 'absolute',
+    left: 88,
+    top: 20,
+    width: 22,
+    height: 22,
+    borderRadius: 14,
+    borderWidth: 4,
+    borderColor: '#2d190c',
+    backgroundColor: '#9b671f',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapBoatWheelHub: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#fff0ad',
+  },
+  npcWaterBoat: {
+    position: 'absolute',
+    width: 96,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 11,
+  },
+  npcBoatWake: {
+    position: 'absolute',
+    left: -22,
+    width: 54,
+    height: 12,
+    borderRadius: 999,
+    backgroundColor: 'rgba(232,255,255,0.66)',
+  },
+  npcBoatHull: {
+    width: 82,
+    height: 38,
+    borderRadius: 24,
+    backgroundColor: '#f0b739',
+    borderWidth: 4,
+    borderColor: '#fff0a8',
+    shadowColor: '#00131c',
+    shadowOpacity: 0.58,
+    shadowRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  npcBoatHullAlt: {
+    backgroundColor: '#f0699b',
+  },
+  npcBoatNose: {
+    position: 'absolute',
+    right: -9,
+    top: 7,
+    width: 24,
+    height: 24,
+    borderRadius: 14,
+    backgroundColor: '#ef6d31',
+    borderWidth: 3,
+    borderColor: '#fff0a8',
+  },
+  npcBoatSeat: {
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   dockLabel: {
     position: 'absolute',
     left: 10,
-    top: 148,
+    top: 166,
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: 10,
@@ -1485,29 +1709,51 @@ const styles = StyleSheet.create({
   },
   water: {
     zIndex: 1,
-    borderWidth: 2,
-    borderColor: 'rgba(172,232,238,0.72)',
-    borderRadius: 34,
+    borderWidth: 8,
+    borderColor: '#c7bb87',
+    borderRadius: 18,
     overflow: 'hidden',
     opacity: 0.98,
     shadowColor: '#001924',
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
+    shadowOpacity: 0.7,
+    shadowRadius: 18,
+    backgroundColor: '#064f78',
+  },
+  waterDepthGlow: {
+    position: 'absolute',
+    left: -40,
+    right: -40,
+    top: -40,
+    bottom: -40,
+    backgroundColor: 'rgba(1,30,67,0.34)',
+    borderRadius: 60,
   },
   waterCurrentBand: {
     position: 'absolute',
-    height: 72,
+    height: 86,
     borderRadius: 999,
-    backgroundColor: 'rgba(126,220,235,0.12)',
+    backgroundColor: 'rgba(101,213,245,0.24)',
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: 'rgba(215,255,255,0.1)',
+    borderColor: 'rgba(235,255,255,0.16)',
   },
   waterRipple: {
     position: 'absolute',
-    height: 6,
+    height: 7,
     borderRadius: 10,
-    backgroundColor: 'rgba(204,250,255,0.72)',
+    backgroundColor: 'rgba(222,252,255,0.86)',
+    shadowColor: '#dffcff',
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+  },
+  waterShineLine: {
+    position: 'absolute',
+    height: 3,
+    borderRadius: 6,
+    backgroundColor: 'rgba(248,255,255,0.58)',
+    shadowColor: '#ffffff',
+    shadowOpacity: 0.28,
+    shadowRadius: 4,
   },
   waterFoamDot: {
     position: 'absolute',
@@ -1521,16 +1767,65 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    height: 10,
-    backgroundColor: 'rgba(232,217,150,0.5)',
+    height: 18,
+    backgroundColor: '#bdb48f',
+    borderBottomWidth: 4,
+    borderBottomColor: '#e8d99a',
   },
   waterShoreBottom: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: 10,
-    backgroundColor: 'rgba(232,217,150,0.5)',
+    height: 18,
+    backgroundColor: '#bdb48f',
+    borderTopWidth: 4,
+    borderTopColor: '#e8d99a',
+  },
+  waterShoreLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 18,
+    backgroundColor: '#bdb48f',
+    borderRightWidth: 4,
+    borderRightColor: '#e8d99a',
+  },
+  waterShoreRight: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 18,
+    backgroundColor: '#bdb48f',
+    borderLeftWidth: 4,
+    borderLeftColor: '#e8d99a',
+  },
+  waterCornerStone: {
+    position: 'absolute',
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#9e9277',
+    borderWidth: 4,
+    borderColor: '#efe0a8',
+  },
+  waterCornerTopLeft: {
+    left: 4,
+    top: 4,
+  },
+  waterCornerTopRight: {
+    right: 4,
+    top: 4,
+  },
+  waterCornerBottomLeft: {
+    left: 4,
+    bottom: 4,
+  },
+  waterCornerBottomRight: {
+    right: 4,
+    bottom: 4,
   },
   lilyPad: {
     position: 'absolute',

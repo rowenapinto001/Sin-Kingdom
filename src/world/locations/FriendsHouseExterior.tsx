@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { friendsHouseExterior } from '../../data/friendsHouseExteriorConfig';
 
 type FriendsHouseExteriorProps = {
@@ -7,11 +7,13 @@ type FriendsHouseExteriorProps = {
 };
 
 const flowerBeds = [
-  { x: 98, y: 400 },
-  { x: 190, y: 455 },
-  { x: 286, y: 405 },
-  { x: 704, y: 404 },
-  { x: 788, y: 462 },
+  { x: 98, y: 400, cropX: 8, cropY: 8, cropW: 64, cropH: 58 },
+  { x: 190, y: 455, cropX: 78, cropY: 8, cropW: 64, cropH: 58 },
+  { x: 286, y: 405, cropX: 148, cropY: 8, cropW: 64, cropH: 58 },
+  { x: 704, y: 404, cropX: 8, cropY: 76, cropW: 64, cropH: 66 },
+  { x: 788, y: 462, cropX: 78, cropY: 76, cropW: 64, cropH: 58 },
+  { x: 392, y: 414, cropX: 148, cropY: 76, cropW: 64, cropH: 58 },
+  { x: 492, y: 456, cropX: 8, cropY: 148, cropW: 64, cropH: 58 },
 ];
 
 const bushes = [
@@ -29,6 +31,28 @@ const lamps = [
   { x: 340, y: 350 },
   { x: 525, y: 350 },
 ];
+
+const flowerSheet = require('../../../assets/flowerss.png');
+
+function FlowerPatch({ cropX, cropY, cropW, cropH }: { cropX: number; cropY: number; cropW: number; cropH: number }) {
+  const scale = 1.18;
+  return (
+    <View style={styles.flowerPatchClip}>
+      <Image
+        source={flowerSheet}
+        style={[
+          styles.flowerPatchSheet,
+          {
+            width: 284 * scale,
+            height: 414 * scale,
+            left: -cropX * scale + (76 - cropW * scale) / 2,
+            top: -cropY * scale + (50 - cropH * scale) / 2,
+          },
+        ]}
+      />
+    </View>
+  );
+}
 
 export default function FriendsHouseExterior({ x, y }: FriendsHouseExteriorProps) {
   const { width, height, house, driveway, gate, road, frontDoorZone } = friendsHouseExterior;
@@ -59,18 +83,9 @@ export default function FriendsHouseExterior({ x, y }: FriendsHouseExteriorProps
 
       <View style={styles.mainWalkway} />
       <View style={styles.crossWalkway} />
-      <View style={styles.roundGarden}>
-        <View style={styles.fountainOuter}>
-          <View style={styles.fountainWater} />
-        </View>
-      </View>
-
       {flowerBeds.map((bed) => (
         <View key={`${bed.x}-${bed.y}`} style={[styles.flowerBed, { left: bed.x, top: bed.y }]}>
-          <View style={styles.flowerDotPink} />
-          <View style={styles.flowerDotGold} />
-          <View style={styles.flowerDotWhite} />
-          <View style={styles.flowerDotPurple} />
+          <FlowerPatch cropX={bed.cropX} cropY={bed.cropY} cropW={bed.cropW} cropH={bed.cropH} />
         </View>
       ))}
 
@@ -308,77 +323,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderColor: '#e5d8ad',
   },
-  roundGarden: {
-    position: 'absolute',
-    left: 358,
-    top: 398,
-    width: 184,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#c7b98f',
-    borderWidth: 4,
-    borderColor: '#e8dca7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fountainOuter: {
-    width: 78,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#d9cfad',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fountainWater: {
-    width: 58,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#42b3c8',
-  },
   flowerBed: {
     position: 'absolute',
     width: 76,
-    height: 42,
-    borderRadius: 18,
-    backgroundColor: '#235f2f',
+    height: 50,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#1c4f26',
     borderWidth: 2,
-    borderColor: '#88c56d',
+    borderColor: '#8bd675',
+    shadowColor: '#001b08',
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
   },
-  flowerDotPink: {
-    position: 'absolute',
-    left: 13,
-    top: 12,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#ff69b8',
+  flowerPatchClip: {
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+    borderRadius: 12,
   },
-  flowerDotGold: {
+  flowerPatchSheet: {
     position: 'absolute',
-    left: 34,
-    top: 18,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#ffd050',
-  },
-  flowerDotWhite: {
-    position: 'absolute',
-    right: 14,
-    top: 10,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#f3fff0',
-  },
-  flowerDotPurple: {
-    position: 'absolute',
-    right: 28,
-    bottom: 8,
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: '#c987ff',
   },
   roundBush: {
     position: 'absolute',

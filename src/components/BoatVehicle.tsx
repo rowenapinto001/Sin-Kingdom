@@ -12,16 +12,17 @@ export default function BoatVehicle({ heading, speed }: BoatVehicleProps) {
       <View style={[styles.wake, { opacity: speed > 8 ? 0.7 : 0.22 }]} />
       <View style={styles.hull}>
         <View style={styles.nose} />
+        <View style={styles.innerFloor} />
         <View style={styles.deck}>
           <View style={styles.seat}>
-            <SpriteCharacter characterId="lunaCrown" direction="down" isMoving={speed > 12} currentAction="idle" scale={0.82} />
+            <SpriteCharacter characterId="lunaCrown" direction="down" isMoving={speed > 12} currentAction="idle" scale={0.48} />
             <Text style={styles.seatLabel}>Luna</Text>
           </View>
           <View style={styles.wheel}>
             <View style={styles.wheelHub} />
           </View>
           <View style={styles.seat}>
-            <SpriteCharacter characterId="victorKane" direction="down" isMoving={false} currentAction="idle" scale={0.72} />
+            <SpriteCharacter characterId="victorKane" direction="down" isMoving={false} currentAction="idle" scale={0.46} />
             <Text style={styles.seatLabel}>Boss</Text>
           </View>
         </View>
@@ -55,6 +56,18 @@ const styles = StyleSheet.create({
     shadowColor: '#00131c',
     shadowOpacity: 0.6,
     shadowRadius: 10,
+    overflow: 'hidden',
+  },
+  innerFloor: {
+    position: 'absolute',
+    left: 14,
+    right: 10,
+    top: 8,
+    bottom: 7,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.32)',
+    borderWidth: 2,
+    borderColor: 'rgba(105,65,18,0.28)',
   },
   nose: {
     position: 'absolute',
@@ -75,13 +88,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
   },
   seat: {
+    minWidth: 24,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: 'rgba(36,61,83,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   seatLabel: {
-    marginTop: -7,
+    marginTop: -3,
     color: '#111',
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: '900',
   },
   wheel: {

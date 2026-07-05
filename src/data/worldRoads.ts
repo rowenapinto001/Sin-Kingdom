@@ -94,22 +94,11 @@ const mainRoads: WorldObject[] = [
     { x: 2050, y: 1870 },
     { x: 2475, y: 1885 },
   ], highway),
-  ...createCurvedRoad('road-friends-house-drive', 'Friends House Drive', [
-    { x: 1780, y: 1815 },
-    { x: 2180, y: 2110 },
-    { x: 3050, y: 2420 },
-  ], districtRoad),
   ...createCurvedRoad('road-player-house-entry', 'Player House Drive', [
     { x: 2475, y: 1885 },
     { x: 2425, y: 1835 },
     { x: 2475, y: 1785 },
   ], districtRoad),
-  ...createCurvedRoad('road-doorway-garden-connector', 'Garden Doorway Connector', [
-    { x: 2475, y: 2260 },
-    { x: 2850, y: 2145 },
-    { x: 3220, y: 2365 },
-    { x: 3570, y: 2260 },
-  ], highway),
   ...createCurvedRoad('road-mahal-connector', 'Royal Connector', [
     { x: 3570, y: 1565 },
     { x: 3750, y: 1488 },
@@ -128,7 +117,6 @@ const intersections: WorldObject[] = [
   ...createIntersection('intersection-police', { x: 4750, y: 560 }, ROAD_WIDTH * 1.35),
   ...createIntersection('intersection-airport', { x: 560, y: 2980 }, ROAD_WIDTH * 1.5),
   ...createIntersection('intersection-player-house', { x: 2475, y: 1885 }, ROAD_WIDTH * 1.45),
-  ...createIntersection('intersection-garden', { x: 2475, y: 2260 }, ROAD_WIDTH * 1.4),
   ...createIntersection('intersection-doorway', { x: 3570, y: 2260 }, ROAD_WIDTH * 1.35),
   ...createIntersection('intersection-mahal', { x: 3920, y: 1565 }, ROAD_WIDTH * 1.35),
   ...createIntersection('intersection-pink-palace', { x: 3920, y: 2660 }, ROAD_WIDTH * 1.35),
@@ -158,9 +146,7 @@ export const worldRoadDecorations: RoadDecoration[] = [
   createCrosswalk('crosswalk-garage', { x: 2305, y: 940 }, false),
   createCrosswalk('crosswalk-party', { x: 3520, y: 560 }),
   createCrosswalk('crosswalk-police', { x: 4750, y: 690 }, false),
-  createCrosswalk('crosswalk-friends', { x: 3050, y: 2420 }),
   createCrosswalk('crosswalk-player-house', { x: 2475, y: 1885 }),
-  createCrosswalk('crosswalk-garden', { x: 2475, y: 2260 }, false),
   createCrosswalk('crosswalk-doorway', { x: 3570, y: 2260 }, false),
   createCrosswalk('crosswalk-mahal', { x: 3920, y: 1565 }, false),
   createCrosswalk('crosswalk-pink-palace', { x: 4360, y: 2660 }),
@@ -190,5 +176,4 @@ export const worldRoadDecorations: RoadDecoration[] = [
   createRoadSign('sign-party', { x: 3630, y: 470 }, 'NEON CLUB'),
   createRoadSign('sign-police', { x: 4630, y: 756 }, 'POLICE'),
   createRoadSign('sign-palace', { x: 4040, y: 1665 }, 'ROYAL ZONE'),
-  createRoadSign('sign-garden', { x: 2570, y: 2360 }, 'GARDEN'),
 ];

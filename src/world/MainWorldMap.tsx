@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Bridge from '../components/Bridge';
 import BoatControls from '../components/BoatControls';
 import BoatVehicle from '../components/BoatVehicle';
@@ -64,7 +64,7 @@ type MainWorldMapProps = {
   onBackToHideout: () => void;
 };
 
-type ShipSide = 'west' | 'east';
+type ShipSide = 'west' | 'east' | 'bridge';
 
 const MINIMAP_WIDTH = 145;
 const MINIMAP_HEIGHT = 106;
@@ -72,6 +72,7 @@ const MINIMAP_SCALE_X = MINIMAP_WIDTH / WORLD_WIDTH;
 const MINIMAP_SCALE_Y = MINIMAP_HEIGHT / WORLD_HEIGHT;
 const SHIP_DOCK_ZONES: Array<Rect & { side: ShipSide }> = [
   { side: 'west', x: 190, y: 300, width: 430, height: 480 },
+  { side: 'bridge', x: 1030, y: 1830, width: 340, height: 380 },
   { side: 'east', x: 210, y: 7770, width: 440, height: 300 },
 ];
 const BOAT_WORLD_WIDTH = 102;
@@ -79,7 +80,7 @@ const BOAT_WORLD_HEIGHT = 54;
 const BOAT_WATER_LANES: Rect[] = [
   { x: 70, y: 660, width: 1180, height: 8040 },
   { x: 150, y: 360, width: 700, height: 360 },
-  { x: 54, y: 1908, width: 1290, height: 136 },
+  { x: 54, y: 1918, width: 1290, height: 126 },
 ];
 const BOAT_BLOCKERS: Rect[] = [
   { x: 250, y: 1420, width: 210, height: 140 },
@@ -114,17 +115,28 @@ function isBlockedByBridgeRails(rect: Rect) {
 }
 
 function isWaterAt(rect: Rect) {
-  void rect;
-  return false;
+  const samplePoints = [
+    rectCenter(rect),
+    { x: rect.x + 10, y: rect.y + 10 },
+    { x: rect.x + rect.width - 10, y: rect.y + 10 },
+    { x: rect.x + 10, y: rect.y + rect.height - 10 },
+    { x: rect.x + rect.width - 10, y: rect.y + rect.height - 10 },
+  ];
+
+  return samplePoints.some((point) => {
+    const onBridgeWalkway = allBridgeConfigs.some((bridge) => bridge.walkableAreas.some((area) => pointInRect(point, area)));
+    if (onBridgeWalkway) return false;
+    return worldObjects.some((object) => object.kind === 'water' && pointInRect(point, object));
+  });
 }
 
 function isBoatDrivableAt(rect: Rect) {
   const samplePoints = [
     rectCenter(rect),
-    { x: rect.x + 12, y: rect.y + 12 },
-    { x: rect.x + rect.width - 12, y: rect.y + 12 },
-    { x: rect.x + 12, y: rect.y + rect.height - 12 },
-    { x: rect.x + rect.width - 12, y: rect.y + rect.height - 12 },
+    { x: rect.x + 18, y: rect.y + 14 },
+    { x: rect.x + rect.width - 18, y: rect.y + 14 },
+    { x: rect.x + 18, y: rect.y + rect.height - 14 },
+    { x: rect.x + rect.width - 18, y: rect.y + rect.height - 14 },
   ];
   return samplePoints.every((point) => (
     BOAT_WATER_LANES.some((area) => pointInRect(point, area)) &&
@@ -177,6 +189,17 @@ function nearestDockToRect(rect: Rect) {
 }
 
 function boatSpawnForDock(side: ShipSide): BoatState {
+  if (side === 'bridge') {
+    return {
+      x: 1068,
+      y: 1968,
+      heading: 0,
+      speed: 0,
+      fuel: 100,
+      isMoving: false,
+    };
+  }
+
   return {
     x: side === 'west' ? 365 : 405,
     y: side === 'west' ? 675 : 7835,
@@ -220,7 +243,6 @@ function WaterDetails({ object, waveShift }: { object: Rect; waveShift: Animated
   const columns = Math.max(4, Math.ceil(object.width / 150));
   const rows = Math.max(3, Math.ceil(object.height / 125));
   const rippleCount = Math.min(190, columns * rows);
-  const lilyCount = Math.min(85, Math.max(8, Math.floor((object.width * object.height) / 82000)));
   const bandCount = Math.min(34, Math.max(3, Math.floor(object.height / 270)));
   const waveTranslate = waveShift.interpolate({ inputRange: [0, 1], outputRange: [-90, 90] });
   const reverseWaveTranslate = waveShift.interpolate({ inputRange: [0, 1], outputRange: [80, -80] });
@@ -281,7 +303,7 @@ function WaterDetails({ object, waveShift }: { object: Rect; waveShift: Animated
           ]}
         />
       ))}
-      {Array.from({ length: lilyCount }).map((_, index) => (
+      {Array.from({ length: Math.min(85, Math.max(8, Math.floor((object.width * object.height) / 82000))) }).map((_, index) => (
         <View
           key={`foam-${index}`}
           style={[
@@ -289,19 +311,6 @@ function WaterDetails({ object, waveShift }: { object: Rect; waveShift: Animated
             {
               left: 42 + ((index * 139) % Math.max(100, object.width - 70)),
               top: 44 + ((index * 317) % Math.max(100, object.height - 90)),
-            },
-          ]}
-        />
-      ))}
-      {Array.from({ length: lilyCount }).map((_, index) => (
-        <View
-          key={`lily-${index}`}
-          style={[
-            styles.lilyPad,
-            {
-              left: 22 + ((index * 173) % Math.max(80, object.width - 80)),
-              top: 38 + ((index * 251) % Math.max(80, object.height - 80)),
-              transform: [{ rotate: `${(index % 5) * 18 - 36}deg` }],
             },
           ]}
         />
@@ -342,17 +351,18 @@ function BoatDockLayer() {
   return (
     <>
       <BoatDock side="west" x={255} y={535} label="BOATING DOCK" />
+      <BoatDock side="bridge" x={1130} y={1918} label="BRIDGE BOAT" />
       <BoatDock side="east" x={280} y={7770} label="FAR SEA DOCK" />
     </>
   );
 }
 
 function BoatDock({ side, x, y, label }: { side: ShipSide; x: number; y: number; label: string }) {
-  const boatRotation = side === 'west' ? '-8deg' : '188deg';
+  const boatRotation = side === 'west' ? '-8deg' : side === 'bridge' ? '0deg' : '188deg';
   return (
     <View style={[styles.boatDock, { left: x, top: y }]}>
       <View style={styles.dockPlanks}>
-        {Array.from({ length: 5 }).map((_, index) => (
+      {Array.from({ length: 5 }).map((_, index) => (
           <View key={index} style={[styles.dockPlankLine, { left: 10 + index * 24 }]} />
         ))}
       </View>
@@ -642,6 +652,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const [footsteps, setFootsteps] = useState<FootstepPoint[]>([]);
   const footstepsRef = useRef<FootstepPoint[]>([]);
   const footstepIdRef = useRef(0);
+  const keyboardReleaseTimersRef = useRef<Partial<Record<Direction, ReturnType<typeof setTimeout>>>>({});
   const lastFootstepRef = useRef({ x: PLAYER_HOUSE_SPAWN.x, y: PLAYER_HOUSE_SPAWN.y });
   const [insideLocation, setInsideLocation] = useState<WorldLocation | null>(null);
   const [message, setMessage] = useState('Start at Player House. Roads connect every major place outward from the center.');
@@ -874,6 +885,10 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     return () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
       if (shootTimerRef.current) clearTimeout(shootTimerRef.current);
+      Object.values(keyboardReleaseTimersRef.current).forEach((timer) => {
+        if (timer) clearTimeout(timer);
+      });
+      keyboardReleaseTimersRef.current = {};
       lastTimestampRef.current = null;
     };
   }, [caughtByPolice, isRunning, playerAction]);
@@ -884,6 +899,39 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
 
   const releaseDirection = (direction: Direction) => {
     setActiveDirections((current) => current.filter((item) => item !== direction));
+  };
+
+  const pulseKeyboardDirection = (direction: Direction) => {
+    pressDirection(direction);
+    const existingTimer = keyboardReleaseTimersRef.current[direction];
+    if (existingTimer) clearTimeout(existingTimer);
+    keyboardReleaseTimersRef.current[direction] = setTimeout(() => {
+      releaseDirection(direction);
+      delete keyboardReleaseTimersRef.current[direction];
+    }, 150);
+  };
+
+  const handleKeyboardMove = (key: string) => {
+    const directionByKey: Record<string, Direction | undefined> = {
+      ArrowUp: 'up',
+      Up: 'up',
+      w: 'up',
+      W: 'up',
+      ArrowDown: 'down',
+      Down: 'down',
+      s: 'down',
+      S: 'down',
+      ArrowLeft: 'left',
+      Left: 'left',
+      a: 'left',
+      A: 'left',
+      ArrowRight: 'right',
+      Right: 'right',
+      d: 'right',
+      D: 'right',
+    };
+    const direction = directionByKey[key];
+    if (direction) pulseKeyboardDirection(direction);
   };
 
   const enterNearbyLocation = () => {
@@ -945,10 +993,18 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
       setMessage('Find a dock or shoreline exit point before leaving the boat.');
       return;
     }
+    const dockExit =
+      dock.side === 'bridge'
+        ? { x: 1110, y: 1810, direction: 'up' as Direction }
+        : {
+            x: dock.side === 'west' ? 330 : 360,
+            y: dock.side === 'west' ? 560 : 7770,
+            direction: dock.side === 'west' ? 'down' as Direction : 'up' as Direction,
+          };
     const nextPlayer = {
-      x: dock.side === 'west' ? 330 : 360,
-      y: dock.side === 'west' ? 560 : 7770,
-      direction: dock.side === 'west' ? 'down' as Direction : 'up' as Direction,
+      x: dockExit.x,
+      y: dockExit.y,
+      direction: dockExit.direction,
       isMoving: false,
     };
     const nextBoss = {
@@ -1057,6 +1113,14 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
 
   return (
     <View style={styles.root}>
+      <TextInput
+        autoFocus
+        caretHidden
+        showSoftInputOnFocus={false}
+        value=""
+        onKeyPress={({ nativeEvent }) => handleKeyboardMove(nativeEvent.key)}
+        style={styles.keyboardInput}
+      />
       <View style={[styles.world, { transform: [{ translateX: cameraX }, { translateY: cameraY }] }]}>
         <FullWorldGrass width={WORLD_WIDTH} height={WORLD_HEIGHT} />
         <LandscapeLayer />
@@ -1077,6 +1141,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
               object.kind === 'bridge' && styles.bridge,
               object.kind === 'footpath' && styles.footpath,
               object.kind === 'water' && styles.water,
+              object.id === 'garden-lake' && styles.poolWater,
             ]}
           >
             {object.kind === 'road' ? <RoadMarkings object={object} /> : null}
@@ -1087,7 +1152,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
             ) : null}
           </View>
         ))}
-        <BridgeApproachLayer />
+        {playerMode === 'walking' ? <BridgeApproachLayer /> : null}
         <BoatDockLayer />
         <NpcBridgeBoats boatA={npcBoatA} boatB={npcBoatB} />
         <RoadDecorationLayer />
@@ -1098,9 +1163,11 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
           <LocationTile key={location.id} location={location} caughtByPolice={caughtByPolice} />
         ))}
 
-        <View style={[styles.boatActor, { transform: [{ translateX: boat.x }, { translateY: boat.y }] }]}>
-          <BoatVehicle heading={boat.heading} speed={boat.speed} />
-        </View>
+        {playerMode === 'driving_boat' ? (
+          <View style={[styles.boatActor, { transform: [{ translateX: boat.x }, { translateY: boat.y }] }]}>
+            <BoatVehicle heading={boat.heading} speed={boat.speed} />
+          </View>
+        ) : null}
 
         {npcs.map((npc) => (
           <View key={npc.id} style={[styles.actor, { transform: [{ translateX: npc.x }, { translateY: npc.y }] }]}>
@@ -1173,6 +1240,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#08110d',
     overflow: 'hidden',
+  },
+  keyboardInput: {
+    position: 'absolute',
+    left: -24,
+    top: -24,
+    width: 1,
+    height: 1,
+    opacity: 0,
   },
   flightRoot: {
     flex: 1,
@@ -1716,6 +1791,15 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     backgroundColor: '#064f78',
   },
+  poolWater: {
+    borderWidth: 12,
+    borderColor: '#061923',
+    borderRadius: 28,
+    backgroundColor: '#075b83',
+    shadowColor: '#000',
+    shadowOpacity: 0.78,
+    shadowRadius: 16,
+  },
   waterDepthGlow: {
     position: 'absolute',
     left: -40,
@@ -1850,7 +1934,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
-    zIndex: 7,
+    zIndex: 45,
   },
   playerActor: {
     zIndex: 20,

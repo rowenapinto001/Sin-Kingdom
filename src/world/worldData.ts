@@ -251,7 +251,7 @@ export const worldObjects: WorldObject[] = [
   { id: 'party-stage', label: 'Dance Stage', kind: 'stage', x: 3468, y: 360, width: 190, height: 60, color: '#ff2e8a' },
   { id: 'airport-runway', label: 'Runway', kind: 'road', x: 300, y: 3160, width: 930, height: 70, color: '#202833' },
   { id: 'garage-lot', label: 'Vehicle Lot', kind: 'vehicle', x: 2180, y: 920, width: 300, height: 74, color: '#2b2d34' },
-  { id: 'garden-lake', label: 'Garden Lake', kind: 'water', x: 2440, y: 2300, width: 172, height: 86, color: '#1c6b74', blocked: true },
+  { id: 'garden-lake', label: 'Garden Pool', kind: 'water', x: 2680, y: 2240, width: 420, height: 150, color: '#0e668a', blocked: true },
 ];
 
 export const worldNpcs: WorldNpc[] = [

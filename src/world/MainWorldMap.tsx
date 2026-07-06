@@ -27,6 +27,7 @@ import { Rect, WorldLocation, WorldLocationId, WorldNpc, WorldObject } from './w
 import AirplaneFlight from './locations/AirplaneFlight';
 import AirportInterior from './locations/AirportInterior';
 import FriendsHouseExterior from './locations/FriendsHouseExterior';
+import FriendsHouseExteriorScene from './locations/FriendsHouseExteriorScene';
 import FriendsHouseInterior from './locations/FriendsHouseInterior';
 import LandscapeLayer, { FullWorldGrass } from './gardenDecorations';
 
@@ -43,6 +44,7 @@ type WorldActor = {
 };
 
 type PlayerMode = 'walking' | 'driving_boat';
+type FriendsHouseScene = 'exterior' | 'interior';
 
 type BoatState = {
   x: number;
@@ -655,6 +657,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const keyboardReleaseTimersRef = useRef<Partial<Record<Direction, ReturnType<typeof setTimeout>>>>({});
   const lastFootstepRef = useRef({ x: PLAYER_HOUSE_SPAWN.x, y: PLAYER_HOUSE_SPAWN.y });
   const [insideLocation, setInsideLocation] = useState<WorldLocation | null>(null);
+  const [friendsHouseScene, setFriendsHouseScene] = useState<FriendsHouseScene>('exterior');
   const [message, setMessage] = useState('Start at Player House. Roads connect every major place outward from the center.');
   const frameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
@@ -958,6 +961,9 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     }
 
     setInsideLocation(nearbyLocation);
+    if (nearbyLocation.id === 'friendsHouse') {
+      setFriendsHouseScene('exterior');
+    }
     setMessage(`${nearbyLocation.name}: ${nearbyLocation.interaction}`);
   };
 
@@ -1060,7 +1066,18 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   }
 
   if (insideLocation?.id === 'friendsHouse') {
-    return <FriendsHouseInterior onExit={() => setInsideLocation(null)} onMissionStart={onStartMission} />;
+    if (friendsHouseScene === 'interior') {
+      return <FriendsHouseInterior onExit={() => setFriendsHouseScene('exterior')} onMissionStart={onStartMission} />;
+    }
+    return (
+      <FriendsHouseExteriorScene
+        onEnterHouse={() => setFriendsHouseScene('interior')}
+        onExitWorld={() => {
+          setInsideLocation(null);
+          setFriendsHouseScene('exterior');
+        }}
+      />
+    );
   }
 
   if (insideLocation) {

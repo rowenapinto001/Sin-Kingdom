@@ -5,9 +5,11 @@ import BoatControls from '../components/BoatControls';
 import BoatVehicle from '../components/BoatVehicle';
 import DPad from '../components/DPad';
 import SpriteCharacter from '../components/SpriteCharacter';
+import TrafficLight from '../components/world/TrafficLight';
 import { airportDestinations } from '../data/airportDestinations';
 import { allBridgeConfigs, getBridgeConfig } from '../data/bridgeConfigs';
 import { allLocationConfigs, getLocationConfig } from '../data/locationConfigs';
+import { trafficLights } from '../data/trafficLights';
 import { worldRoadDecorations, worldRoadObjects } from '../data/worldRoads';
 import { Direction } from '../game/types';
 import { CharacterAction } from '../types/CharacterAnimation';
@@ -470,13 +472,7 @@ function RoadDecorationLayer() {
           );
         }
         if (decoration.type === 'trafficLight') {
-          return (
-            <View key={decoration.id} style={[styles.trafficLight, { left: decoration.x, top: decoration.y }]}>
-              <View style={[styles.signalDot, styles.signalRed]} />
-              <View style={[styles.signalDot, styles.signalYellow]} />
-              <View style={[styles.signalDot, styles.signalGreen]} />
-            </View>
-          );
+          return null;
         }
         if (decoration.type === 'streetLamp') {
           return (
@@ -1173,6 +1169,18 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         <BoatDockLayer />
         <NpcBridgeBoats boatA={npcBoatA} boatB={npcBoatB} />
         <RoadDecorationLayer />
+        {trafficLights.map((light, index) => (
+          <TrafficLight
+            key={light.id}
+            id={light.id}
+            x={light.x}
+            y={light.y}
+            rotation={light.rotation}
+            scale={light.scale}
+            activeLight={index % 3 === 0 ? 'red' : index % 3 === 1 ? 'yellow' : 'green'}
+            collision={light.collision}
+          />
+        ))}
         {worldLocations.filter((location) => location.id === 'friendsHouse').map((location) => (
           <FriendsHouseExterior key={location.id} x={location.x} y={location.y} />
         ))}

@@ -1,4 +1,5 @@
 import { allLocationConfigs } from '../data/locationConfigs';
+import { trafficLightCollisionBoxes } from '../data/trafficLights';
 import { Rect } from './worldTypes';
 
 export function rectsOverlap(a: Rect, b: Rect) {
@@ -6,5 +7,6 @@ export function rectsOverlap(a: Rect, b: Rect) {
 }
 
 export function isBlockedByLocation(rect: Rect) {
-  return allLocationConfigs.some((location) => rectsOverlap(rect, location.collisionBox));
+  return allLocationConfigs.some((location) => rectsOverlap(rect, location.collisionBox))
+    || trafficLightCollisionBoxes.some((box) => rectsOverlap(rect, box));
 }

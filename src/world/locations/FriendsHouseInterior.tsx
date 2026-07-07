@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ImageBackground, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import DialogBox from '../../components/DialogBox';
 import DPad from '../../components/DPad';
 import InteractZone from '../../components/InteractZone';
@@ -23,6 +23,7 @@ type FriendsHouseInteriorProps = {
 
 const PLAYER_SIZE = 46;
 const SPEED = 185;
+const interiorBackdrop = require('../../../assets/locations/friends_house.png');
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -184,19 +185,28 @@ export default function FriendsHouseInterior({ onExit, onMissionStart }: Friends
 
   return (
     <View style={styles.root}>
-      <View style={[styles.house, { transform: [{ translateX: cameraX }, { translateY: cameraY }] }]}>
-        {friendsHouseRooms.map((room) => (
-          <View key={room.id} style={[styles.room, { left: room.x, top: room.y, width: room.width, height: room.height, backgroundColor: room.floor }]}>
-            <View style={styles.roomGlow} />
-            {Array.from({ length: 6 }).map((_, index) => (
-              <View key={index} style={[styles.floorLine, { top: 28 + index * 42 }]} />
-            ))}
+      <ImageBackground source={interiorBackdrop} resizeMode="cover" style={styles.backdrop} imageStyle={styles.backdropImage}>
+        <View style={styles.backdropShade} />
+        <View style={styles.storyChoicePanel}>
+          <View style={styles.choiceRowActive}>
+            <Text style={styles.choiceArrow}>▶</Text>
+            <Text style={styles.choiceText}>I'm ready.</Text>
           </View>
-        ))}
-        <View style={styles.outerWall} />
-        <View style={styles.hallLineHorizontal} />
-        <View style={styles.hallLineVertical} />
-        <Furniture />
+          <View style={styles.choiceRow}>
+            <Text style={styles.choiceText}>Tell me more about the task.</Text>
+          </View>
+          <View style={styles.choiceRow}>
+            <Text style={styles.choiceText}>Not right now.</Text>
+          </View>
+        </View>
+      </ImageBackground>
+      <View style={[styles.house, { transform: [{ translateX: cameraX }, { translateY: cameraY }] }]}>
+        <View style={styles.livingRoomStage}>
+          <View style={styles.stageGlow} />
+          <View style={styles.stageSofaLeft} />
+          <View style={styles.stageSofaRight} />
+          <View style={styles.stageTable} />
+        </View>
         {friendsHouseInteractZones.map((item) => (
           <InteractZone
             key={item.id}
@@ -225,7 +235,7 @@ export default function FriendsHouseInterior({ onExit, onMissionStart }: Friends
 
       <View style={styles.hud}>
         <Text style={styles.title}>Friends House</Text>
-        <Text style={styles.subtitle}>{zone ? zone.label : 'Walk through rooms. Meet Arion Vale and the Boss in the living room.'}</Text>
+        <Text style={styles.subtitle}>{zone ? zone.label : 'Enter the house. Meet Arion Vale and the Boss in the living room.'}</Text>
       </View>
       <View style={styles.actions}>
         <Pressable style={styles.primaryButton} onPress={interact}>
@@ -281,7 +291,103 @@ const styles = StyleSheet.create({
     top: 0,
     width: friendsHouseInterior.width,
     height: friendsHouseInterior.height,
-    backgroundColor: '#15121b',
+    backgroundColor: 'transparent',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+  },
+  backdropImage: {
+    opacity: 0.92,
+  },
+  backdropShade: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(5, 3, 8, 0.34)',
+  },
+  storyChoicePanel: {
+    position: 'absolute',
+    left: '43%',
+    top: '34%',
+    width: '35%',
+    gap: 8,
+  },
+  choiceRowActive: {
+    minHeight: 38,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    flexDirection: 'row',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 195, 52, 0.9)',
+    backgroundColor: 'rgba(10, 8, 13, 0.86)',
+  },
+  choiceRow: {
+    minHeight: 36,
+    paddingHorizontal: 18,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 195, 52, 0.52)',
+    backgroundColor: 'rgba(10, 8, 13, 0.72)',
+  },
+  choiceArrow: {
+    marginRight: 8,
+    color: '#ffbf3f',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  choiceText: {
+    color: '#f6e8c8',
+    fontSize: 15,
+    fontWeight: '900',
+    textShadowColor: '#000',
+    textShadowRadius: 4,
+  },
+  livingRoomStage: {
+    position: 'absolute',
+    left: 520,
+    top: 418,
+    width: 560,
+    height: 340,
+    borderRadius: 28,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 46, 138, 0.65)',
+    backgroundColor: 'rgba(10, 6, 13, 0.16)',
+  },
+  stageGlow: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255, 195, 52, 0.05)',
+  },
+  stageSofaLeft: {
+    position: 'absolute',
+    left: 60,
+    top: 168,
+    width: 140,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: 'rgba(25, 22, 27, 0.72)',
+    borderWidth: 2,
+    borderColor: '#bd9e74',
+  },
+  stageSofaRight: {
+    position: 'absolute',
+    right: 72,
+    top: 92,
+    width: 58,
+    height: 132,
+    borderRadius: 18,
+    backgroundColor: 'rgba(25, 22, 27, 0.72)',
+    borderWidth: 2,
+    borderColor: '#bd9e74',
+  },
+  stageTable: {
+    position: 'absolute',
+    left: 220,
+    top: 178,
+    width: 110,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(146, 91, 42, 0.82)',
+    borderWidth: 2,
+    borderColor: '#d6a86b',
   },
   outerWall: {
     position: 'absolute',

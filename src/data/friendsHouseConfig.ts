@@ -57,7 +57,7 @@ export const friendsHouseCollisionBoxes: Rect[] = [
 ];
 
 export const friendsHouseInteractZones: FriendsHouseInteractZone[] = [
-  { id: 'arion', label: 'Talk to Arion Vale', x: 635, y: 530, width: 150, height: 135 },
+  { id: 'arion', label: 'ENTER HOUSE', x: 635, y: 530, width: 150, height: 135 },
   { id: 'boss', label: 'Boss Meeting', x: 860, y: 500, width: 170, height: 150 },
   { id: 'laptop', label: 'Study Laptop', x: 1110, y: 120, width: 210, height: 145 },
   { id: 'exit', label: 'Exit House', x: 650, y: 862, width: 300, height: 96 },

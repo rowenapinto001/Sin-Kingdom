@@ -185,7 +185,7 @@ export default function FriendsHouseExteriorScene({ onEnterHouse, onExitWorld }:
 
   const interact = () => {
     if (!zone) return;
-    if (zone.id === 'enterHouse') {
+    if (zone.id === 'enterHouse' || zone.id === 'talkArion') {
       onEnterHouse();
       return;
     }
@@ -214,7 +214,7 @@ export default function FriendsHouseExteriorScene({ onEnterHouse, onExitWorld }:
             height={item.height * scaleY}
             label={item.label}
             active={zone?.id === item.id}
-            onPress={item.id === 'enterHouse' ? onEnterHouse : () => setDialog(item.id)}
+            onPress={item.id === 'enterHouse' || item.id === 'talkArion' ? onEnterHouse : () => setDialog(item.id)}
           />
         ))}
         <View style={[styles.actor, scenePoint(friendsHouseExteriorScene.arionSpawn.x, friendsHouseExteriorScene.arionSpawn.y)]}>

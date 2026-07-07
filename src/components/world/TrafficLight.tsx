@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 export type TrafficLightVariant = 'standard' | 'small' | 'intersection';
 export type TrafficLightState = 'red' | 'yellow' | 'green';
@@ -14,8 +14,6 @@ type TrafficLightProps = {
   activeLight?: TrafficLightState;
   collision?: boolean;
 };
-
-const trafficLightImage = require('../../../assets/world/traffic_light.png');
 
 export default function TrafficLight({
   x,
@@ -40,8 +38,20 @@ export default function TrafficLight({
         },
       ]}
     >
-      <Image source={trafficLightImage} resizeMode="contain" style={styles.image} />
-      <View style={[styles.glow, styles[activeLight]]} />
+      <View style={styles.signalHead}>
+        <View style={styles.signalCap} />
+        <View style={styles.signalLensWrap}>
+          <View style={[styles.lens, styles.redLens, activeLight === 'red' && styles.activeRed]} />
+        </View>
+        <View style={styles.signalLensWrap}>
+          <View style={[styles.lens, styles.yellowLens, activeLight === 'yellow' && styles.activeYellow]} />
+        </View>
+        <View style={styles.signalLensWrap}>
+          <View style={[styles.lens, styles.greenLens, activeLight === 'green' && styles.activeGreen]} />
+        </View>
+      </View>
+      <View style={styles.pole} />
+      <View style={styles.base} />
     </View>
   );
 }
@@ -49,36 +59,90 @@ export default function TrafficLight({
 const styles = StyleSheet.create({
   root: {
     position: 'absolute',
-    width: 44,
-    height: 96,
+    width: 52,
+    height: 118,
     alignItems: 'center',
-    justifyContent: 'center',
     zIndex: 8,
   },
-  image: {
-    width: 44,
-    height: 96,
+  signalHead: {
+    width: 36,
+    height: 66,
+    borderRadius: 9,
+    backgroundColor: '#111820',
+    borderWidth: 3,
+    borderColor: '#60707c',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    shadowColor: '#000',
+    shadowOpacity: 0.55,
+    shadowRadius: 5,
   },
-  glow: {
+  signalCap: {
     position: 'absolute',
-    top: 16,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    opacity: 0.7,
-    shadowOpacity: 0.9,
+    top: -8,
+    width: 18,
+    height: 10,
+    borderRadius: 8,
+    backgroundColor: '#26343d',
+    borderWidth: 2,
+    borderColor: '#9aa9b0',
+  },
+  signalLensWrap: {
+    width: 23,
+    height: 16,
+    borderRadius: 10,
+    backgroundColor: '#05070a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#31383e',
+  },
+  lens: {
+    width: 13,
+    height: 13,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.42)',
+  },
+  redLens: {
+    backgroundColor: '#ff2626',
+  },
+  yellowLens: {
+    backgroundColor: '#ffd22e',
+  },
+  greenLens: {
+    backgroundColor: '#42f05f',
+  },
+  activeRed: {
+    shadowColor: '#ff3030',
+    shadowOpacity: 1,
     shadowRadius: 8,
   },
-  red: {
-    backgroundColor: '#ff3030',
-    shadowColor: '#ff3030',
+  activeYellow: {
+    shadowColor: '#ffd22e',
+    shadowOpacity: 1,
+    shadowRadius: 8,
   },
-  yellow: {
-    backgroundColor: '#ffbd28',
-    shadowColor: '#ffbd28',
+  activeGreen: {
+    shadowColor: '#42f05f',
+    shadowOpacity: 1,
+    shadowRadius: 8,
   },
-  green: {
-    backgroundColor: '#49e58d',
-    shadowColor: '#49e58d',
+  pole: {
+    width: 8,
+    height: 38,
+    backgroundColor: '#b9c4c9',
+    borderLeftWidth: 2,
+    borderLeftColor: '#e8f0f2',
+    borderRightWidth: 2,
+    borderRightColor: '#6d787d',
+  },
+  base: {
+    width: 30,
+    height: 12,
+    borderRadius: 4,
+    backgroundColor: '#1d252b',
+    borderWidth: 2,
+    borderColor: '#5b666d',
   },
 });

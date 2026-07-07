@@ -4,6 +4,7 @@ import Bridge from '../components/Bridge';
 import BoatControls from '../components/BoatControls';
 import BoatVehicle from '../components/BoatVehicle';
 import DPad from '../components/DPad';
+import MiniMap from '../components/MiniMap';
 import SpriteCharacter from '../components/SpriteCharacter';
 import TrafficLight from '../components/world/TrafficLight';
 import { airportDestinations } from '../data/airportDestinations';
@@ -1231,7 +1232,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
                 : message}
         </Text>
       </View>
-      <MiniWorldMap player={player} boss={boss} npcs={npcs} footsteps={footsteps} />
+      <MiniMap player={player} boss={boss} npcs={npcs} footsteps={footsteps} />
       {playerMode === 'walking' ? (
         <View style={styles.actions}>
           <Pressable style={styles.primaryButton} onPress={enterNearbyLocation}>

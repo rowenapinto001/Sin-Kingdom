@@ -41,6 +41,12 @@ export const bridgeConfigs: Record<string, BridgeConfig> = {
 
 export const allBridgeConfigs = Object.values(bridgeConfigs);
 
+export const miniMapBridgeConfig = {
+  waterZone: { x: 72, y: 248, width: 210, height: 96 },
+  bridgeRoad: { x: 86, y: 286, width: 344, height: 28 },
+  label: 'Bridge',
+};
+
 export function getBridgeConfig(id: string) {
   return bridgeConfigs[id];
 }

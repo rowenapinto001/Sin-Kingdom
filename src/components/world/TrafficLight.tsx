@@ -18,7 +18,6 @@ type TrafficLightProps = {
 export default function TrafficLight({
   x,
   y,
-  rotation = 0,
   scale = 1,
   variant = 'standard',
   activeLight = 'red',
@@ -34,7 +33,7 @@ export default function TrafficLight({
         {
           left: x,
           top: y,
-          transform: [{ rotate: `${rotation}deg` }, { scale: finalScale }],
+          transform: [{ scale: finalScale }],
         },
       ]}
     >

@@ -26,7 +26,7 @@ export const trafficLights: TrafficLightPlacement[] = [
   { id: 'player-house-gate-light-left', x: 2320, y: 3212, rotation: 0, scale: 0.58, side: 'west', collision: true },
   { id: 'player-house-gate-light-right', x: 2508, y: 3338, rotation: 180, scale: 0.58, side: 'east', collision: true },
   { id: 'pink-palace-road-light', x: 4248, y: 3582, rotation: 0, scale: 0.62, side: 'north', collision: true },
-  { id: 'clock-tower-road-light', x: 2470, y: 4640, rotation: 0, scale: 0.62, side: 'north', collision: true },
+  { id: 'clock-tower-road-light', x: 2158, y: 4640, rotation: 0, scale: 0.62, side: 'north', collision: true },
   { id: 'desert-road-light', x: 4235, y: 5430, rotation: 0, scale: 0.64, side: 'west', collision: true },
   { id: 'rose-temple-road-light', x: 3085, y: 6042, rotation: 0, scale: 0.6, side: 'west', collision: true },
   { id: 'airport-road-light', x: 618, y: 7030, rotation: 0, scale: 0.66, side: 'east', collision: true },

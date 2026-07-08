@@ -6,6 +6,7 @@ import BoatVehicle from '../components/BoatVehicle';
 import DPad from '../components/DPad';
 import MiniMap from '../components/MiniMap';
 import SpriteCharacter from '../components/SpriteCharacter';
+import AtmosphereOverlay from '../components/world/AtmosphereOverlay';
 import TrafficLight from '../components/world/TrafficLight';
 import { airportDestinations } from '../data/airportDestinations';
 import { allBridgeConfigs, getBridgeConfig } from '../data/bridgeConfigs';
@@ -13,6 +14,7 @@ import { allLocationConfigs, getLocationConfig } from '../data/locationConfigs';
 import { trafficLights } from '../data/trafficLights';
 import { worldRoadDecorations, worldRoadObjects } from '../data/worldRoads';
 import { Direction } from '../game/types';
+import { useIndianTimeAtmosphere } from '../hooks/useIndianTimeAtmosphere';
 import { CharacterAction } from '../types/CharacterAnimation';
 import { isBlockedByLocation } from './collision';
 import LocationTile from './locations/LocationTile';
@@ -446,7 +448,7 @@ function NpcBridgeBoats({ boatA, boatB }: { boatA: Animated.Value; boatB: Animat
   );
 }
 
-function RoadDecorationLayer() {
+function RoadDecorationLayer({ lightsEnabled, glowColor }: { lightsEnabled: boolean; glowColor: string }) {
   return (
     <>
       {worldRoadDecorations.map((decoration) => {
@@ -478,7 +480,13 @@ function RoadDecorationLayer() {
         if (decoration.type === 'streetLamp') {
           return (
             <View key={decoration.id} style={[styles.streetLamp, { left: decoration.x, top: decoration.y }]}>
-              <View style={styles.lampGlow} />
+              <View
+                style={[
+                  styles.lampGlow,
+                  lightsEnabled && styles.lampGlowActive,
+                  lightsEnabled && { backgroundColor: glowColor },
+                ]}
+              />
               <View style={styles.lampPost} />
             </View>
           );
@@ -617,6 +625,7 @@ function MiniWorldMap({
 
 export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWorldMapProps) {
   const { width, height } = useWindowDimensions();
+  const atmosphere = useIndianTimeAtmosphere();
   const waveShift = useRef(new Animated.Value(0)).current;
   const npcBoatA = useRef(new Animated.Value(0)).current;
   const npcBoatB = useRef(new Animated.Value(0)).current;
@@ -1168,7 +1177,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         ))}
         <BoatDockLayer />
         <NpcBridgeBoats boatA={npcBoatA} boatB={npcBoatB} />
-        <RoadDecorationLayer />
+        <RoadDecorationLayer lightsEnabled={atmosphere.lightsEnabled} glowColor={atmosphere.glowColor} />
         {trafficLights.map((light, index) => (
           <TrafficLight
             key={light.id}
@@ -1216,6 +1225,14 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
             </View>
           </>
         ) : null}
+        <AtmosphereOverlay
+          phase={atmosphere.phase}
+          overlayColor={atmosphere.overlayColor}
+          overlayOpacity={atmosphere.overlayOpacity}
+          lightsEnabled={atmosphere.lightsEnabled}
+          glowColor={atmosphere.glowColor}
+          vignetteOpacity={atmosphere.vignetteOpacity}
+        />
       </View>
 
       <View style={styles.hud}>
@@ -1231,6 +1248,13 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         </Text>
       </View>
       <MiniMap player={player} boss={boss} npcs={npcs} footsteps={footsteps} />
+      {__DEV__ ? (
+        <View style={styles.atmosphereBadge}>
+          <Text style={styles.atmosphereBadgeText}>
+            IST {String(atmosphere.hour).padStart(2, '0')}:{String(atmosphere.minute).padStart(2, '0')} | {atmosphere.label}
+          </Text>
+        </View>
+      ) : null}
       {playerMode === 'walking' ? (
         <View style={styles.actions}>
           <Pressable style={styles.primaryButton} onPress={enterNearbyLocation}>
@@ -1771,6 +1795,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#fff0a6',
   },
+  lampGlowActive: {
+    width: 46,
+    height: 34,
+    borderRadius: 24,
+    opacity: 0.92,
+    shadowColor: '#ffc75b',
+    shadowOpacity: 0.95,
+    shadowRadius: 16,
+  },
   lampPost: {
     width: 5,
     height: 48,
@@ -1995,6 +2028,26 @@ const styles = StyleSheet.create({
     color: '#f3d9ff',
     fontSize: 13,
     fontWeight: '700',
+  },
+  atmosphereBadge: {
+    position: 'absolute',
+    left: 16,
+    top: 114,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(6, 9, 18, 0.76)',
+    borderWidth: 1,
+    borderColor: '#ffbf3f',
+    shadowColor: '#ff2e8a',
+    shadowOpacity: 0.42,
+    shadowRadius: 8,
+    zIndex: 60,
+  },
+  atmosphereBadgeText: {
+    color: '#fff2c9',
+    fontSize: 11,
+    fontWeight: '900',
   },
   minimapPanel: {
     position: 'absolute',

@@ -5,6 +5,7 @@ import DPad from '../../components/DPad';
 import InteractZone from '../../components/InteractZone';
 import SceneBackground from '../../components/SceneBackground';
 import SpriteCharacter from '../../components/SpriteCharacter';
+import AtmosphereOverlay from '../../components/world/AtmosphereOverlay';
 import {
   FriendsHouseExteriorInteractId,
   friendsHouseExteriorBlockedZones,
@@ -13,6 +14,7 @@ import {
   friendsHouseExteriorWalkZones,
 } from '../../data/friendsHouseExteriorSceneConfig';
 import { Direction } from '../../game/types';
+import { useIndianTimeAtmosphere } from '../../hooks/useIndianTimeAtmosphere';
 import { Rect } from '../worldTypes';
 
 type Actor = {
@@ -75,6 +77,7 @@ function nearbyZone(actor: Actor) {
 
 export default function FriendsHouseExteriorScene({ onEnterHouse, onExitWorld }: FriendsHouseExteriorSceneProps) {
   const { width, height } = useWindowDimensions();
+  const atmosphere = useIndianTimeAtmosphere();
   const scaleX = width / friendsHouseExteriorScene.width;
   const scaleY = height / friendsHouseExteriorScene.height;
   const [activeDirections, setActiveDirections] = useState<Direction[]>([]);
@@ -229,11 +232,30 @@ export default function FriendsHouseExteriorScene({ onEnterHouse, onExitWorld }:
           <SpriteCharacter characterId="lunaCrown" direction={player.direction} isMoving={player.isMoving} currentAction={player.isMoving ? 'walk' : 'idle'} scale={1.7} />
           <Text style={styles.actorLabel}>Luna</Text>
         </View>
+        {atmosphere.lightsEnabled ? (
+          <>
+            <View style={[styles.sceneGlow, styles.windowGlowLeft, { backgroundColor: atmosphere.glowColor }]} />
+            <View style={[styles.sceneGlow, styles.windowGlowRight, { backgroundColor: atmosphere.glowColor }]} />
+            <View style={[styles.pathGlow, { backgroundColor: atmosphere.glowColor }]} />
+          </>
+        ) : null}
+        <AtmosphereOverlay
+          phase={atmosphere.phase}
+          overlayColor={atmosphere.overlayColor}
+          overlayOpacity={atmosphere.overlayOpacity}
+          lightsEnabled={atmosphere.lightsEnabled}
+          glowColor={atmosphere.glowColor}
+          vignetteOpacity={atmosphere.vignetteOpacity}
+        />
       </SceneBackground>
 
       <View style={styles.hud}>
         <Text style={styles.title}>Friends House</Text>
-        <Text style={styles.subtitle}>{zone ? zone.label : 'Meet Arion Vale. Enter the mansion.'}</Text>
+        <Text style={styles.subtitle}>
+          {zone
+            ? zone.label
+            : `Meet Arion Vale. Enter the mansion.${__DEV__ ? ` IST ${String(atmosphere.hour).padStart(2, '0')}:${String(atmosphere.minute).padStart(2, '0')} ${atmosphere.label}` : ''}`}
+        </Text>
       </View>
       <View style={styles.actions}>
         <Pressable style={styles.primaryButton} onPress={interact}>
@@ -281,6 +303,35 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textShadowColor: '#000',
     textShadowRadius: 4,
+  },
+  sceneGlow: {
+    position: 'absolute',
+    width: 120,
+    height: 74,
+    borderRadius: 40,
+    opacity: 0.42,
+    zIndex: 10,
+    shadowColor: '#ffc75b',
+    shadowOpacity: 0.9,
+    shadowRadius: 18,
+  },
+  windowGlowLeft: {
+    left: '24%',
+    top: '18%',
+  },
+  windowGlowRight: {
+    right: '24%',
+    top: '18%',
+  },
+  pathGlow: {
+    position: 'absolute',
+    left: '42%',
+    bottom: '22%',
+    width: 160,
+    height: 90,
+    borderRadius: 80,
+    opacity: 0.28,
+    zIndex: 10,
   },
   hud: {
     position: 'absolute',

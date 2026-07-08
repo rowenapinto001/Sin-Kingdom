@@ -8,7 +8,6 @@ type TrafficLightProps = {
   id: string;
   x: number;
   y: number;
-  rotation?: number;
   scale?: number;
   variant?: TrafficLightVariant;
   activeLight?: TrafficLightState;

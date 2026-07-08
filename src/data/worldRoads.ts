@@ -1,5 +1,4 @@
 import {
-  createBridge,
   createCrosswalk,
   createCurvedRoad,
   createIntersection,
@@ -145,19 +144,7 @@ const intersections: WorldObject[] = [
   ...createIntersection('intersection-garden-mid', { x: 1900, y: 6600 }, ROAD_WIDTH * 1.35),
 ];
 
-const bridgeRoads: WorldObject[] = createBridge(
-  bridgeConfigs['bridge-friends-canal'].id,
-  bridgeConfigs['bridge-friends-canal'].name,
-  {
-    x: bridgeConfigs['bridge-friends-canal'].bounds.x + bridgeConfigs['bridge-friends-canal'].bounds.width / 2,
-    y: bridgeConfigs['bridge-friends-canal'].bounds.y + bridgeConfigs['bridge-friends-canal'].bounds.height / 2,
-  },
-  bridgeConfigs['bridge-friends-canal'].bounds.width,
-  bridgeConfigs['bridge-friends-canal'].bounds.height,
-  '0deg',
-);
-
-export const worldRoadObjects: WorldObject[] = [...mainRoads, ...intersections, ...bridgeRoads];
+export const worldRoadObjects: WorldObject[] = [...mainRoads, ...intersections];
 
 export const worldRoadDecorations: RoadDecoration[] = [
   createCrosswalk('crosswalk-boating', { x: 380, y: 560 }),

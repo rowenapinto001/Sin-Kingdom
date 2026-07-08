@@ -1166,7 +1166,6 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
             ) : null}
           </View>
         ))}
-        {playerMode === 'walking' ? <BridgeApproachLayer /> : null}
         <BoatDockLayer />
         <NpcBridgeBoats boatA={npcBoatA} boatB={npcBoatB} />
         <RoadDecorationLayer />
@@ -1176,7 +1175,6 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
             id={light.id}
             x={light.x}
             y={light.y}
-            rotation={light.rotation}
             scale={light.scale}
             activeLight={index % 3 === 0 ? 'red' : index % 3 === 1 ? 'yellow' : 'green'}
             collision={light.collision}

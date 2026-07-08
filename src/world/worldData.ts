@@ -6,17 +6,17 @@ export const WORLD_WIDTH = 5200;
 export const WORLD_HEIGHT = 9000;
 export const PLAYER_WORLD_SIZE = 54;
 export const PLAYER_WORLD_SPEED = 210;
-export const PLAYER_HOUSE_SPAWN = { x: 2400, y: 3385 };
+export const PLAYER_HOUSE_SPAWN = { x: 360, y: 2520 };
 
 export const worldLocations: WorldLocation[] = [
   {
     id: 'playerHouse',
     name: 'Player House',
     theme: 'Luxury mansion safe zone',
-    x: 2340,
-    y: 3200,
-    width: 220,
-    height: 170,
+    x: 250,
+    y: 2260,
+    width: 290,
+    height: 220,
     color: '#50305d',
     accent: '#ffbf3f',
     enterable: true,
@@ -134,8 +134,8 @@ export const worldLocations: WorldLocation[] = [
     id: 'airport',
     name: 'Airport / Aeroplane Area',
     theme: 'Terminal, runway, hangar',
-    x: 350,
-    y: 7100,
+    x: 250,
+    y: 3100,
     width: 360,
     height: 250,
     color: '#2d536d',
@@ -239,17 +239,13 @@ export const worldLocations: WorldLocation[] = [
 
 export const worldObjects: WorldObject[] = [
   ...worldRoadObjects,
-  { id: 'great-west-sea', label: 'Great West Sea', kind: 'water', x: 40, y: 620, width: 1260, height: 8120, color: '#087ca4', blocked: true },
+  { id: 'great-west-sea', label: 'Great West Sea', kind: 'water', x: 40, y: 620, width: 1260, height: 1474, color: '#087ca4', blocked: true },
   { id: 'lake', label: 'Boating Bay', kind: 'water', x: 120, y: 280, width: 760, height: 510, color: '#0b4964', blocked: true },
   { id: 'sea-island-1', label: 'Palm Island', kind: 'sand', x: 250, y: 1420, width: 210, height: 140, color: '#b88945', blocked: true },
-  { id: 'sea-island-2', label: 'Rock Island', kind: 'sand', x: 790, y: 2380, width: 230, height: 150, color: '#8b764f', blocked: true },
-  { id: 'sea-island-3', label: 'Tiny Resort Island', kind: 'grass', x: 360, y: 3820, width: 260, height: 170, color: '#2d7c3d', blocked: true },
-  { id: 'sea-island-4', label: 'Far Palm Island', kind: 'sand', x: 760, y: 5650, width: 280, height: 180, color: '#bd9250', blocked: true },
-  { id: 'sea-island-5', label: 'End Sea Island', kind: 'grass', x: 260, y: 7600, width: 320, height: 220, color: '#337d40', blocked: true },
   { id: 'desert-sand', label: 'Sand Route', kind: 'sand', x: 4140, y: 5480, width: 940, height: 620, color: '#7d5728' },
   { id: 'desert-oasis', label: 'Deep Oasis', kind: 'water', x: 4850, y: 5880, width: 190, height: 92, color: '#187f8d', blocked: true },
   { id: 'party-stage', label: 'Dance Stage', kind: 'stage', x: 3468, y: 360, width: 190, height: 60, color: '#ff2e8a' },
-  { id: 'airport-runway', label: 'Runway', kind: 'road', x: 300, y: 7410, width: 930, height: 70, color: '#202833' },
+  { id: 'airport-runway', label: 'Runway', kind: 'road', x: 220, y: 3405, width: 820, height: 70, color: '#202833' },
   { id: 'garage-lot', label: 'Vehicle Lot', kind: 'vehicle', x: 2030, y: 1840, width: 300, height: 74, color: '#2b2d34' },
   { id: 'garden-lake', label: 'Garden Pool', kind: 'water', x: 4270, y: 7240, width: 520, height: 180, color: '#0e668a', blocked: true },
 ];

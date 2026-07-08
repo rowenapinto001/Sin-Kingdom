@@ -1,5 +1,4 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { miniMapBridgeConfig } from '../data/bridgeConfigs';
 import { miniMapRoutes, miniMapTrafficLights, miniMapWaterZone } from '../data/miniMapRoutes';
 import { miniMapNodes } from '../data/locationNodes';
 import { PLAYER_WORLD_SIZE, WORLD_HEIGHT, WORLD_WIDTH } from '../world/worldData';
@@ -105,18 +104,11 @@ export default function MiniMap({ player, boss, npcs, footsteps }: MiniMapProps)
               height: sy(miniMapWaterZone.height),
             },
           ]}
-        />
-        <View
-          style={[
-            styles.bridgeBox,
-            {
-              left: sx(miniMapBridgeConfig.bridgeRoad.x),
-              top: sy(miniMapBridgeConfig.bridgeRoad.y),
-              width: sx(miniMapBridgeConfig.bridgeRoad.width),
-              height: sy(miniMapBridgeConfig.bridgeRoad.height),
-            },
-          ]}
-        />
+        >
+          <View style={[styles.waterWave, { top: sy(34), left: sx(24), width: sx(250) }]} />
+          <View style={[styles.waterWave, { top: sy(86), left: sx(54), width: sx(210) }]} />
+          <View style={[styles.waterWave, { top: sy(142), left: sx(18), width: sx(238) }]} />
+        </View>
         {miniMapRoutes.map((route) => route.points.slice(0, -1).map((point, index) => (
           <Segment key={`${route.id}-${index}`} from={point} to={route.points[index + 1]} bridge={route.kind === 'bridge'} />
         )))}
@@ -220,17 +212,17 @@ const styles = StyleSheet.create({
   water: {
     position: 'absolute',
     borderRadius: 7,
-    backgroundColor: '#1187a8',
-    borderWidth: 1,
-    borderColor: '#63dff7',
+    backgroundColor: '#087fa5',
+    borderWidth: 1.2,
+    borderColor: '#6cf0ff',
+    zIndex: 1,
+    overflow: 'hidden',
   },
-  bridgeBox: {
+  waterWave: {
     position: 'absolute',
-    borderRadius: 3,
-    backgroundColor: '#292e32',
-    borderWidth: 1,
-    borderColor: '#d8c088',
-    zIndex: 2,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: 'rgba(173,240,255,0.82)',
   },
   roadSegment: {
     position: 'absolute',

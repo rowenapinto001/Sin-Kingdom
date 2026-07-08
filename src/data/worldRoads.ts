@@ -26,11 +26,7 @@ const mainRoads: WorldObject[] = [
     { x: 4140, y: 468 },
     { x: 4750, y: 560 },
   ], highway),
-  ...createCurvedRoad('road-west-airport-greenway', 'Airport Greenway', [
-    { x: 560, y: 560 },
-    { x: 430, y: 980 },
-    { x: 650, y: 1360 },
-    { x: 560, y: 1815 },
+  ...createCurvedRoad('road-left-land-spine', 'Left Land Spine', [
     { x: 520, y: 2260 },
     { x: 520, y: 2710 },
     { x: 520, y: 3225 },

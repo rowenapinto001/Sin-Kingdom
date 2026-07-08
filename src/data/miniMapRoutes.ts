@@ -19,23 +19,23 @@ export type MiniMapTrafficLight = {
 };
 
 export const miniMapWaterZone = {
-  x: 72,
-  y: 248,
-  width: 210,
-  height: 96,
+  x: 56,
+  y: 150,
+  width: 300,
+  height: 190,
 };
 
 export const miniMapBridge = {
-  x: 86,
-  y: 286,
-  width: 344,
-  height: 28,
+  x: 68,
+  y: 236,
+  width: 266,
+  height: 24,
 };
 
 export const miniMapRoutes: MiniMapRoute[] = [
   { id: 'top-2-3-4', points: [{ x: 112, y: 102 }, { x: 420, y: 96 }, { x: 722, y: 98 }] },
-  { id: 'left-2-bridge-1-9', points: [{ x: 112, y: 102 }, { x: 94, y: 194 }, { x: 110, y: 300 }, { x: 112, y: 420 }, { x: 128, y: 790 }] },
-  { id: 'bridge-to-12', kind: 'bridge', points: [{ x: 110, y: 300 }, { x: 430, y: 300 }] },
+  { id: 'left-top-to-water-bank', points: [{ x: 112, y: 102 }, { x: 92, y: 132 }] },
+  { id: 'left-land-1-9', points: [{ x: 112, y: 390 }, { x: 112, y: 420 }, { x: 128, y: 790 }] },
   { id: 'middle-3-12-10-13', points: [{ x: 420, y: 96 }, { x: 430, y: 300 }, { x: 430, y: 640 }, { x: 430, y: 790 }] },
   { id: 'bottom-left-9-13-14', points: [{ x: 128, y: 790 }, { x: 430, y: 790 }, { x: 650, y: 790 }] },
   { id: 'center-right-4-7-11-14', points: [{ x: 722, y: 98 }, { x: 610, y: 300 }, { x: 650, y: 640 }, { x: 650, y: 790 }] },

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Bridge from '../components/Bridge';
 import BoatControls from '../components/BoatControls';
 import BoatVehicle from '../components/BoatVehicle';
@@ -86,8 +86,6 @@ const SHIP_DOCK_ZONES: Array<Rect & { side: ShipSide }> = [
 ];
 const BOAT_WORLD_WIDTH = 102;
 const BOAT_WORLD_HEIGHT = 54;
-const lunaWorldActor = require('../../assets/luna-crown-cutout.png');
-const bossWorldActor = require('../../assets/boss-stair-walk.png');
 const BOAT_WATER_LANES: Rect[] = [
   { x: 70, y: 660, width: 1180, height: 8040 },
   { x: 150, y: 360, width: 700, height: 360 },
@@ -623,38 +621,6 @@ function MiniWorldMap({
         <View style={[styles.legendDot, styles.legendStep]} />
         <Text style={styles.legendText}>Footsteps</Text>
       </View>
-    </View>
-  );
-}
-
-function WorldCutoutActor({
-  source,
-  label,
-  direction,
-  isMoving,
-  variant,
-}: {
-  source: number;
-  label: string;
-  direction: Direction;
-  isMoving: boolean;
-  variant: 'player' | 'boss';
-}) {
-  const facesLeft = direction === 'left';
-  return (
-    <View style={styles.cutoutActorFrame}>
-      <View style={[styles.cutoutShadow, variant === 'boss' && styles.cutoutShadowBoss]} />
-      <Image
-        source={source}
-        resizeMode="contain"
-        style={[
-          styles.cutoutActorImage,
-          variant === 'boss' ? styles.cutoutBossImage : styles.cutoutPlayerImage,
-          isMoving && styles.cutoutActorMoving,
-          { transform: [{ scaleX: facesLeft ? -1 : 1 }] },
-        ]}
-      />
-      <Text style={[styles.actorLabel, styles.cutoutActorLabel]}>{label}</Text>
     </View>
   );
 }
@@ -1231,10 +1197,14 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         {playerMode === 'walking' ? (
           <>
             <View style={[styles.actor, styles.bossActor, { transform: [{ translateX: boss.x }, { translateY: boss.y }] }]}>
-              <WorldCutoutActor source={bossWorldActor} label="Boss" direction={boss.direction} isMoving={boss.isMoving} variant="boss" />
+              <View style={[styles.actorShadow, styles.bossActorShadow]} />
+              <SpriteCharacter characterId="victorKane" direction={boss.direction} isMoving={boss.isMoving} currentAction={boss.isMoving ? 'walk' : 'idle'} scale={2.25} />
+              <Text style={styles.actorLabel}>Boss</Text>
             </View>
             <View style={[styles.actor, styles.playerActor, { transform: [{ translateX: player.x }, { translateY: player.y }] }]}>
-              <WorldCutoutActor source={lunaWorldActor} label="Luna" direction={player.direction} isMoving={player.isMoving || playerAction === 'shoot'} variant="player" />
+              <View style={styles.actorShadow} />
+              <SpriteCharacter characterId="lunaCrown" direction={player.direction} isMoving={player.isMoving} currentAction={playerAction} scale={2.4} />
+              <Text style={styles.actorLabel}>Luna</Text>
             </View>
           </>
         ) : null}
@@ -2014,51 +1984,21 @@ const styles = StyleSheet.create({
     zIndex: 155,
     elevation: 155,
   },
-  cutoutActorFrame: {
-    position: 'relative',
-    width: 92,
-    height: 146,
-    marginLeft: -19,
-    marginTop: -92,
-    alignItems: 'center',
-  },
-  cutoutActorImage: {
+  actorShadow: {
     position: 'absolute',
-    bottom: 16,
-    borderRadius: 5,
-    zIndex: 3,
-  },
-  cutoutPlayerImage: {
-    width: 62,
-    height: 122,
-  },
-  cutoutBossImage: {
-    width: 52,
-    height: 116,
-    opacity: 0.98,
-  },
-  cutoutActorMoving: {
-    opacity: 0.98,
-  },
-  cutoutShadow: {
-    position: 'absolute',
-    bottom: 12,
+    left: 9,
+    top: 57,
     width: 58,
     height: 16,
     borderRadius: 999,
     backgroundColor: 'rgba(0,0,0,0.45)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.14)',
-    zIndex: 1,
+    zIndex: -1,
   },
-  cutoutShadowBoss: {
-    width: 62,
-  },
-  cutoutActorLabel: {
-    position: 'absolute',
-    bottom: 0,
-    zIndex: 4,
-    fontSize: 10,
+  bossActorShadow: {
+    left: 7,
+    top: 53,
   },
   actorLabel: {
     marginTop: -4,

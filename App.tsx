@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Dimensions, Easing, Image, ImageBackground, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, Dimensions, Easing, Image, ImageBackground, LogBox, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   allMissions,
@@ -42,6 +42,10 @@ import {
   spendLife,
   toLeaderboardEntry,
 } from './src/game/progression';
+
+if (__DEV__) {
+  LogBox.ignoreLogs(['Cannot connect to Expo CLI']);
+}
 
 const loadingHero = require('./assets/loading-hero.png');
 const menuHome = require('./assets/menu-home-reference.png');
@@ -628,7 +632,7 @@ function AddaIntroScreen({ onComplete }: { onComplete: () => void }) {
   const onCompleteRef = useRef(onComplete);
   const didCompleteRef = useRef(false);
   const [storyControlsEnabled, setStoryControlsEnabled] = useState(false);
-  const [walkAnimationEnabled, setWalkAnimationEnabled] = useState(false);
+  const [walkAnimationEnabled, setWalkAnimationEnabled] = useState(true);
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
@@ -728,6 +732,7 @@ function AddaIntroScreen({ onComplete }: { onComplete: () => void }) {
       ]),
     );
     ambientLoop.start();
+    walkTimerRef.current = setTimeout(startWalking, 1400);
 
     Animated.parallel([
       Animated.timing(openingProgress, {
@@ -1940,8 +1945,8 @@ const screenStyles = StyleSheet.create({
     height: '78%',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    zIndex: 8,
-    elevation: 8,
+    zIndex: 26,
+    elevation: 26,
   },
   addaLunaImage: {
     position: 'absolute',
@@ -1960,8 +1965,8 @@ const screenStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     opacity: 0.96,
-    zIndex: 7,
-    elevation: 7,
+    zIndex: 25,
+    elevation: 25,
   },
   addaBossImage: {
     position: 'absolute',

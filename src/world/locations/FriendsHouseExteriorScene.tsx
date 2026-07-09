@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import DialogBox from '../../components/DialogBox';
 import DPad from '../../components/DPad';
 import InteractZone from '../../components/InteractZone';
@@ -13,8 +13,10 @@ import {
   friendsHouseExteriorScene,
   friendsHouseExteriorWalkZones,
 } from '../../data/friendsHouseExteriorSceneConfig';
+import { gameSettings } from '../../data/gameSettings';
 import { Direction } from '../../game/types';
 import { useIndianTimeAtmosphere } from '../../hooks/useIndianTimeAtmosphere';
+import { mergeDirectionInputs, useKeyboardControls } from '../../hooks/useKeyboardControls';
 import { Rect } from '../worldTypes';
 
 type Actor = {
@@ -80,12 +82,19 @@ export default function FriendsHouseExteriorScene({ onEnterHouse, onExitWorld }:
   const atmosphere = useIndianTimeAtmosphere();
   const scaleX = width / friendsHouseExteriorScene.width;
   const scaleY = height / friendsHouseExteriorScene.height;
-  const [activeDirections, setActiveDirections] = useState<Direction[]>([]);
+  const [touchDirections, setTouchDirections] = useState<Direction[]>([]);
   const activeDirectionsRef = useRef<Direction[]>([]);
   const frameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
-  const keyboardReleaseTimersRef = useRef<Partial<Record<Direction, ReturnType<typeof setTimeout>>>>({});
   const [dialog, setDialog] = useState<FriendsHouseExteriorInteractId | null>(null);
+  const keyboardControls = useKeyboardControls({
+    enabled: gameSettings.keyboardControlsEnabled,
+    disabled: dialog !== null,
+  });
+  const activeDirections = useMemo(
+    () => mergeDirectionInputs(touchDirections, keyboardControls.activeDirections),
+    [keyboardControls.activeDirections, touchDirections],
+  );
   const [player, setPlayer] = useState<Actor>({ ...friendsHouseExteriorScene.playerSpawn, direction: 'up', isMoving: false });
   const playerRef = useRef(player);
   const [boss, setBoss] = useState<Actor>({ ...friendsHouseExteriorScene.bossSpawn, direction: 'up', isMoving: false });
@@ -142,48 +151,20 @@ export default function FriendsHouseExteriorScene({ onEnterHouse, onExitWorld }:
     frameRef.current = requestAnimationFrame(tick);
     return () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-      Object.values(keyboardReleaseTimersRef.current).forEach((timer) => {
-        if (timer) clearTimeout(timer);
-      });
       lastTimestampRef.current = null;
     };
   }, []);
 
+  useEffect(() => {
+    if (dialog !== null) setTouchDirections([]);
+  }, [dialog]);
+
   const pressDirection = (direction: Direction) => {
-    setActiveDirections((current) => (current.includes(direction) ? current : [...current, direction]));
+    setTouchDirections((current) => (current.includes(direction) ? current : [...current, direction]));
   };
 
   const releaseDirection = (direction: Direction) => {
-    setActiveDirections((current) => current.filter((item) => item !== direction));
-  };
-
-  const pulseKeyboardDirection = (direction: Direction) => {
-    pressDirection(direction);
-    const existingTimer = keyboardReleaseTimersRef.current[direction];
-    if (existingTimer) clearTimeout(existingTimer);
-    keyboardReleaseTimersRef.current[direction] = setTimeout(() => {
-      releaseDirection(direction);
-      delete keyboardReleaseTimersRef.current[direction];
-    }, 150);
-  };
-
-  const handleKeyboardMove = (key: string) => {
-    const directionByKey: Record<string, Direction | undefined> = {
-      ArrowUp: 'up',
-      w: 'up',
-      W: 'up',
-      ArrowDown: 'down',
-      s: 'down',
-      S: 'down',
-      ArrowLeft: 'left',
-      a: 'left',
-      A: 'left',
-      ArrowRight: 'right',
-      d: 'right',
-      D: 'right',
-    };
-    const direction = directionByKey[key];
-    if (direction) pulseKeyboardDirection(direction);
+    setTouchDirections((current) => current.filter((item) => item !== direction));
   };
 
   const interact = () => {
@@ -199,14 +180,16 @@ export default function FriendsHouseExteriorScene({ onEnterHouse, onExitWorld }:
 
   return (
     <View style={styles.root}>
-      <TextInput
-        autoFocus
-        caretHidden
-        showSoftInputOnFocus={false}
-        value=""
-        onKeyPress={({ nativeEvent }) => handleKeyboardMove(nativeEvent.key)}
-        style={styles.keyboardInput}
-      />
+      {Platform.OS !== 'web' ? (
+        <TextInput
+          autoFocus
+          caretHidden
+          showSoftInputOnFocus={false}
+          value=""
+          onKeyPress={(event) => keyboardControls.onNativeKeyPress(event)}
+          style={styles.keyboardInput}
+        />
+      ) : null}
       <SceneBackground source={backgroundImage} width={width} height={height}>
         {friendsHouseExteriorInteractZones.map((item) => (
           <InteractZone

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Bridge from '../components/Bridge';
 import BoatControls from '../components/BoatControls';
 import BoatVehicle from '../components/BoatVehicle';
@@ -10,10 +10,12 @@ import AtmosphereOverlay from '../components/world/AtmosphereOverlay';
 import TrafficLight from '../components/world/TrafficLight';
 import { airportDestinations } from '../data/airportDestinations';
 import { allBridgeConfigs, getBridgeConfig } from '../data/bridgeConfigs';
+import { gameSettings } from '../data/gameSettings';
 import { allLocationConfigs, getLocationConfig } from '../data/locationConfigs';
 import { trafficLights } from '../data/trafficLights';
 import { worldRoadDecorations, worldRoadObjects } from '../data/worldRoads';
 import { Direction } from '../game/types';
+import { mergeDirectionInputs, useKeyboardControls } from '../hooks/useKeyboardControls';
 import { useIndianTimeAtmosphere } from '../hooks/useIndianTimeAtmosphere';
 import { CharacterAction } from '../types/CharacterAnimation';
 import { isBlockedByLocation } from './collision';
@@ -84,6 +86,8 @@ const SHIP_DOCK_ZONES: Array<Rect & { side: ShipSide }> = [
 ];
 const BOAT_WORLD_WIDTH = 102;
 const BOAT_WORLD_HEIGHT = 54;
+const lunaWorldActor = require('../../assets/luna-crown-cutout.png');
+const bossWorldActor = require('../../assets/boss-stair-walk.png');
 const BOAT_WATER_LANES: Rect[] = [
   { x: 70, y: 660, width: 1180, height: 8040 },
   { x: 150, y: 360, width: 700, height: 360 },
@@ -623,13 +627,45 @@ function MiniWorldMap({
   );
 }
 
+function WorldCutoutActor({
+  source,
+  label,
+  direction,
+  isMoving,
+  variant,
+}: {
+  source: number;
+  label: string;
+  direction: Direction;
+  isMoving: boolean;
+  variant: 'player' | 'boss';
+}) {
+  const facesLeft = direction === 'left';
+  return (
+    <View style={styles.cutoutActorFrame}>
+      <View style={[styles.cutoutShadow, variant === 'boss' && styles.cutoutShadowBoss]} />
+      <Image
+        source={source}
+        resizeMode="contain"
+        style={[
+          styles.cutoutActorImage,
+          variant === 'boss' ? styles.cutoutBossImage : styles.cutoutPlayerImage,
+          isMoving && styles.cutoutActorMoving,
+          { transform: [{ scaleX: facesLeft ? -1 : 1 }] },
+        ]}
+      />
+      <Text style={[styles.actorLabel, styles.cutoutActorLabel]}>{label}</Text>
+    </View>
+  );
+}
+
 export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWorldMapProps) {
   const { width, height } = useWindowDimensions();
   const atmosphere = useIndianTimeAtmosphere();
   const waveShift = useRef(new Animated.Value(0)).current;
   const npcBoatA = useRef(new Animated.Value(0)).current;
   const npcBoatB = useRef(new Animated.Value(0)).current;
-  const [activeDirections, setActiveDirections] = useState<Direction[]>([]);
+  const [touchDirections, setTouchDirections] = useState<Direction[]>([]);
   const activeDirectionsRef = useRef<Direction[]>([]);
   const [isFlying, setIsFlying] = useState(false);
   const [playerMode, setPlayerMode] = useState<PlayerMode>('walking');
@@ -660,7 +696,6 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const [footsteps, setFootsteps] = useState<FootstepPoint[]>([]);
   const footstepsRef = useRef<FootstepPoint[]>([]);
   const footstepIdRef = useRef(0);
-  const keyboardReleaseTimersRef = useRef<Partial<Record<Direction, ReturnType<typeof setTimeout>>>>({});
   const lastFootstepRef = useRef({ x: PLAYER_HOUSE_SPAWN.x, y: PLAYER_HOUSE_SPAWN.y });
   const [insideLocation, setInsideLocation] = useState<WorldLocation | null>(null);
   const [friendsHouseScene, setFriendsHouseScene] = useState<FriendsHouseScene>('exterior');
@@ -673,6 +708,19 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     direction: 'down',
     isMoving: false,
   });
+  const keyboardControls = useKeyboardControls({
+    enabled: gameSettings.keyboardControlsEnabled,
+    disabled: Boolean(insideLocation) || isFlying,
+  });
+  const activeDirections = useMemo(
+    () => mergeDirectionInputs(touchDirections, keyboardControls.activeDirections),
+    [keyboardControls.activeDirections, touchDirections],
+  );
+  const clearMovementInput = useCallback(() => {
+    setTouchDirections([]);
+    keyboardControls.resetKeyboardControls();
+    activeDirectionsRef.current = [];
+  }, [keyboardControls.resetKeyboardControls]);
 
   const nearbyLocation = useMemo(() => nearestLocation(player), [player]);
   const nearbyDock = useMemo(() => nearestShipDock(player), [player]);
@@ -813,8 +861,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         : { ...current, direction, isMoving: false };
 
       if (waterHit) {
-        activeDirectionsRef.current = [];
-        setActiveDirections([]);
+        clearMovementInput();
         setMessage('Splash! Water is boat-only. Walk to BOATING DOCK, press INTERACT, then use FRONT/BACK and LEFT/RIGHT to drive the boat.');
       } else if (nextPlayer.isMoving) {
         lastSafePlayerRef.current = nextPlayer;
@@ -894,53 +941,16 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     return () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
       if (shootTimerRef.current) clearTimeout(shootTimerRef.current);
-      Object.values(keyboardReleaseTimersRef.current).forEach((timer) => {
-        if (timer) clearTimeout(timer);
-      });
-      keyboardReleaseTimersRef.current = {};
       lastTimestampRef.current = null;
     };
-  }, [caughtByPolice, isRunning, playerAction]);
+  }, [caughtByPolice, clearMovementInput, isRunning, playerAction]);
 
   const pressDirection = (direction: Direction) => {
-    setActiveDirections((current) => (current.includes(direction) ? current : [...current, direction]));
+    setTouchDirections((current) => (current.includes(direction) ? current : [...current, direction]));
   };
 
   const releaseDirection = (direction: Direction) => {
-    setActiveDirections((current) => current.filter((item) => item !== direction));
-  };
-
-  const pulseKeyboardDirection = (direction: Direction) => {
-    pressDirection(direction);
-    const existingTimer = keyboardReleaseTimersRef.current[direction];
-    if (existingTimer) clearTimeout(existingTimer);
-    keyboardReleaseTimersRef.current[direction] = setTimeout(() => {
-      releaseDirection(direction);
-      delete keyboardReleaseTimersRef.current[direction];
-    }, 150);
-  };
-
-  const handleKeyboardMove = (key: string) => {
-    const directionByKey: Record<string, Direction | undefined> = {
-      ArrowUp: 'up',
-      Up: 'up',
-      w: 'up',
-      W: 'up',
-      ArrowDown: 'down',
-      Down: 'down',
-      s: 'down',
-      S: 'down',
-      ArrowLeft: 'left',
-      Left: 'left',
-      a: 'left',
-      A: 'left',
-      ArrowRight: 'right',
-      Right: 'right',
-      d: 'right',
-      D: 'right',
-    };
-    const direction = directionByKey[key];
-    if (direction) pulseKeyboardDirection(direction);
+    setTouchDirections((current) => current.filter((item) => item !== direction));
   };
 
   const enterNearbyLocation = () => {
@@ -950,8 +960,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
       setBoat(nextBoat);
       setPlayerMode('driving_boat');
       playerModeRef.current = 'driving_boat';
-      setActiveDirections([]);
-      activeDirectionsRef.current = [];
+      clearMovementInput();
       setMessage('Luna and the Boss entered the boat. Drive the long sea route from the Boating Dock.');
       return;
     }
@@ -966,6 +975,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
       return;
     }
 
+    clearMovementInput();
     setInsideLocation(nearbyLocation);
     if (nearbyLocation.id === 'friendsHouse') {
       setFriendsHouseScene('exterior');
@@ -984,6 +994,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     lastFootstepRef.current = { x: nextPlayer.x, y: nextPlayer.y };
     footstepsRef.current = [];
     setFootsteps([]);
+    clearMovementInput();
     setIsFlying(false);
     setInsideLocation(null);
     setMessage(`Plane/parachute travel complete: landed near ${location.name}.`);
@@ -991,6 +1002,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
 
   const startFlight = (destinationId: WorldLocationId = flightDestinationId) => {
     setFlightDestinationId(destinationId);
+    clearMovementInput();
     setIsFlying(true);
   };
 
@@ -1033,8 +1045,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     lastFootstepRef.current = { x: nextPlayer.x, y: nextPlayer.y };
     setPlayerMode('walking');
     playerModeRef.current = 'walking';
-    setActiveDirections([]);
-    activeDirectionsRef.current = [];
+    clearMovementInput();
     setMessage(`Boat docked on the ${dock.side} side of the bridge. Boss came with Luna.`);
   };
 
@@ -1053,7 +1064,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
 
   const shoot = () => {
     if (shootTimerRef.current) clearTimeout(shootTimerRef.current);
-    setActiveDirections([]);
+    clearMovementInput();
     setPlayerAction('shoot');
     shootTimerRef.current = setTimeout(() => {
       setPlayerAction(playerRef.current.isMoving ? (isRunning ? 'run' : 'walk') : 'idle');
@@ -1136,14 +1147,16 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
 
   return (
     <View style={styles.root}>
-      <TextInput
-        autoFocus
-        caretHidden
-        showSoftInputOnFocus={false}
-        value=""
-        onKeyPress={({ nativeEvent }) => handleKeyboardMove(nativeEvent.key)}
-        style={styles.keyboardInput}
-      />
+      {Platform.OS !== 'web' ? (
+        <TextInput
+          autoFocus
+          caretHidden
+          showSoftInputOnFocus={false}
+          value=""
+          onKeyPress={(event) => keyboardControls.onNativeKeyPress(event)}
+          style={styles.keyboardInput}
+        />
+      ) : null}
       <View style={[styles.world, { transform: [{ translateX: cameraX }, { translateY: cameraY }] }]}>
         <FullWorldGrass width={WORLD_WIDTH} height={WORLD_HEIGHT} />
         <LandscapeLayer />
@@ -1218,10 +1231,10 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         {playerMode === 'walking' ? (
           <>
             <View style={[styles.actor, styles.bossActor, { transform: [{ translateX: boss.x }, { translateY: boss.y }] }]}>
-              <SpriteCharacter characterId="victorKane" direction={boss.direction} isMoving={boss.isMoving} currentAction={boss.isMoving ? 'walk' : 'idle'} scale={2} />
+              <WorldCutoutActor source={bossWorldActor} label="Boss" direction={boss.direction} isMoving={boss.isMoving} variant="boss" />
             </View>
             <View style={[styles.actor, styles.playerActor, { transform: [{ translateX: player.x }, { translateY: player.y }] }]}>
-              <SpriteCharacter characterId="lunaCrown" direction={player.direction} isMoving={player.isMoving} currentAction={playerAction} scale={2.15} />
+              <WorldCutoutActor source={lunaWorldActor} label="Luna" direction={player.direction} isMoving={player.isMoving || playerAction === 'shoot'} variant="player" />
             </View>
           </>
         ) : null}
@@ -1994,10 +2007,58 @@ const styles = StyleSheet.create({
     zIndex: 45,
   },
   playerActor: {
-    zIndex: 20,
+    zIndex: 160,
+    elevation: 160,
   },
   bossActor: {
-    zIndex: 18,
+    zIndex: 155,
+    elevation: 155,
+  },
+  cutoutActorFrame: {
+    position: 'relative',
+    width: 92,
+    height: 146,
+    marginLeft: -19,
+    marginTop: -92,
+    alignItems: 'center',
+  },
+  cutoutActorImage: {
+    position: 'absolute',
+    bottom: 16,
+    borderRadius: 5,
+    zIndex: 3,
+  },
+  cutoutPlayerImage: {
+    width: 62,
+    height: 122,
+  },
+  cutoutBossImage: {
+    width: 52,
+    height: 116,
+    opacity: 0.98,
+  },
+  cutoutActorMoving: {
+    opacity: 0.98,
+  },
+  cutoutShadow: {
+    position: 'absolute',
+    bottom: 12,
+    width: 58,
+    height: 16,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    zIndex: 1,
+  },
+  cutoutShadowBoss: {
+    width: 62,
+  },
+  cutoutActorLabel: {
+    position: 'absolute',
+    bottom: 0,
+    zIndex: 4,
+    fontSize: 10,
   },
   actorLabel: {
     marginTop: -4,

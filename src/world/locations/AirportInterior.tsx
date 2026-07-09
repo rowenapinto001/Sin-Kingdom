@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import DPad from '../../components/DPad';
 import InteractZone from '../../components/InteractZone';
 import SpriteCharacter from '../../components/SpriteCharacter';
 import { AirportDestination } from '../../data/airportDestinations';
+import { gameSettings } from '../../data/gameSettings';
 import { Direction } from '../../game/types';
+import { mergeDirectionInputs, useKeyboardControls } from '../../hooks/useKeyboardControls';
 import { Rect, WorldLocationId } from '../worldTypes';
 import AirplaneCabin from './AirplaneCabin';
 
@@ -91,8 +93,16 @@ export default function AirportInterior({
   const { width, height } = useWindowDimensions();
   const [sceneState, setSceneState] = useState<AirportSceneState>('outside_airport');
   const [message, setMessage] = useState('Walk to the glowing Entry Door zone.');
-  const [activeDirections, setActiveDirections] = useState<Direction[]>([]);
+  const [touchDirections, setTouchDirections] = useState<Direction[]>([]);
   const activeDirectionsRef = useRef<Direction[]>([]);
+  const keyboardControls = useKeyboardControls({
+    enabled: gameSettings.keyboardControlsEnabled,
+    disabled: sceneState === 'airplane_cabin',
+  });
+  const activeDirections = useMemo(
+    () => mergeDirectionInputs(touchDirections, keyboardControls.activeDirections),
+    [keyboardControls.activeDirections, touchDirections],
+  );
   const [player, setPlayer] = useState<Actor>({ x: 520, y: 574, direction: 'up', isMoving: false });
   const playerRef = useRef(player);
   const [boss, setBoss] = useState<Actor>({ x: 462, y: 596, direction: 'up', isMoving: false });
@@ -192,14 +202,21 @@ export default function AirportInterior({
   }, [blocks]);
 
   const pressDirection = (direction: Direction) => {
-    setActiveDirections((current) => (current.includes(direction) ? current : [...current, direction]));
+    setTouchDirections((current) => (current.includes(direction) ? current : [...current, direction]));
   };
 
   const releaseDirection = (direction: Direction) => {
-    setActiveDirections((current) => current.filter((item) => item !== direction));
+    setTouchDirections((current) => current.filter((item) => item !== direction));
+  };
+
+  const clearMovementInput = () => {
+    setTouchDirections([]);
+    keyboardControls.resetKeyboardControls();
+    activeDirectionsRef.current = [];
   };
 
   const enterInterior = () => {
+    clearMovementInput();
     setSceneState('inside_airport');
     const nextPlayer = { x: 548, y: 578, direction: 'up' as Direction, isMoving: false };
     const nextBoss = { x: 492, y: 600, direction: 'up' as Direction, isMoving: false };
@@ -239,6 +256,7 @@ export default function AirportInterior({
         setMessage('Choose destination before driving the aeroplane.');
         return;
       }
+      clearMovementInput();
       setSceneState('airplane_cabin');
     }
   };
@@ -260,6 +278,7 @@ export default function AirportInterior({
       setMessage('Enter airport, check luggage, and choose destination before driving.');
       return;
     }
+    clearMovementInput();
     setSceneState('airplane_cabin');
   };
 
@@ -278,6 +297,16 @@ export default function AirportInterior({
 
   return (
     <View style={styles.root}>
+      {Platform.OS !== 'web' ? (
+        <TextInput
+          autoFocus
+          caretHidden
+          showSoftInputOnFocus={false}
+          value=""
+          onKeyPress={(event) => keyboardControls.onNativeKeyPress(event)}
+          style={styles.keyboardInput}
+        />
+      ) : null}
       <View style={styles.hud}>
         <Text style={styles.title}>AEROPLANE / AIRPORT</Text>
         <Text style={styles.status}>{nearZone ? `${nearZone.label}: press INTERACT` : message}</Text>
@@ -517,6 +546,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#080b12',
     overflow: 'hidden',
+  },
+  keyboardInput: {
+    position: 'absolute',
+    left: -24,
+    top: -24,
+    width: 1,
+    height: 1,
+    opacity: 0,
   },
   hud: {
     position: 'absolute',

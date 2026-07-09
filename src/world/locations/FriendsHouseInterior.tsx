@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ImageBackground, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ImageBackground, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import DialogBox from '../../components/DialogBox';
 import DPad from '../../components/DPad';
 import InteractZone from '../../components/InteractZone';
 import SpriteCharacter from '../../components/SpriteCharacter';
 import { friendsHouseCollisionBoxes, friendsHouseInteractZones, friendsHouseInterior, friendsHouseRooms } from '../../data/friendsHouseConfig';
 import { friendsHouseDialogue } from '../../data/dialogues/friendsHouseDialogue';
+import { gameSettings } from '../../data/gameSettings';
 import { Direction } from '../../game/types';
+import { mergeDirectionInputs, useKeyboardControls } from '../../hooks/useKeyboardControls';
 import { Rect } from '../worldTypes';
 
 type Actor = {
@@ -100,11 +102,19 @@ function Furniture() {
 
 export default function FriendsHouseInterior({ onExit, onMissionStart }: FriendsHouseInteriorProps) {
   const { width, height } = useWindowDimensions();
-  const [activeDirections, setActiveDirections] = useState<Direction[]>([]);
+  const [touchDirections, setTouchDirections] = useState<Direction[]>([]);
   const activeDirectionsRef = useRef<Direction[]>([]);
   const frameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
   const [dialog, setDialog] = useState<'arion' | 'boss' | 'bossDetails' | 'missionUnlocked' | 'laptop' | null>(null);
+  const keyboardControls = useKeyboardControls({
+    enabled: gameSettings.keyboardControlsEnabled,
+    disabled: dialog !== null,
+  });
+  const activeDirections = useMemo(
+    () => mergeDirectionInputs(touchDirections, keyboardControls.activeDirections),
+    [keyboardControls.activeDirections, touchDirections],
+  );
   const [missionUnlocked, setMissionUnlocked] = useState(false);
   const [player, setPlayer] = useState<Actor>({ x: friendsHouseInterior.playerSpawn.x, y: friendsHouseInterior.playerSpawn.y, direction: 'up', isMoving: false });
   const playerRef = useRef(player);
@@ -117,6 +127,10 @@ export default function FriendsHouseInterior({ onExit, onMissionStart }: Friends
   useEffect(() => {
     activeDirectionsRef.current = activeDirections;
   }, [activeDirections]);
+
+  useEffect(() => {
+    if (dialog !== null) setTouchDirections([]);
+  }, [dialog]);
 
   useEffect(() => {
     const tick = (timestamp: number) => {
@@ -183,8 +197,26 @@ export default function FriendsHouseInterior({ onExit, onMissionStart }: Friends
     setDialog('missionUnlocked');
   };
 
+  const pressDirection = (direction: Direction) => {
+    setTouchDirections((current) => (current.includes(direction) ? current : [...current, direction]));
+  };
+
+  const releaseDirection = (direction: Direction) => {
+    setTouchDirections((current) => current.filter((item) => item !== direction));
+  };
+
   return (
     <View style={styles.root}>
+      {Platform.OS !== 'web' ? (
+        <TextInput
+          autoFocus
+          caretHidden
+          showSoftInputOnFocus={false}
+          value=""
+          onKeyPress={(event) => keyboardControls.onNativeKeyPress(event)}
+          style={styles.keyboardInput}
+        />
+      ) : null}
       <ImageBackground source={interiorBackdrop} resizeMode="cover" style={styles.backdrop} imageStyle={styles.backdropImage}>
         <View style={styles.backdropShade} />
         <View style={styles.storyChoicePanel}>
@@ -245,7 +277,7 @@ export default function FriendsHouseInterior({ onExit, onMissionStart }: Friends
           <Text style={styles.secondaryButtonText}>EXIT HOUSE</Text>
         </Pressable>
       </View>
-      <DPad activeDirections={activeDirections} onDirectionPressIn={(direction) => setActiveDirections((current) => current.includes(direction) ? current : [...current, direction])} onDirectionPressOut={(direction) => setActiveDirections((current) => current.filter((item) => item !== direction))} />
+      <DPad activeDirections={activeDirections} onDirectionPressIn={pressDirection} onDirectionPressOut={releaseDirection} />
 
       {dialog === 'arion' ? (
         <DialogBox title="Arion Vale" text={friendsHouseDialogue.arionGreeting} onClose={() => setDialog(null)} />
@@ -284,6 +316,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#090710',
     overflow: 'hidden',
+  },
+  keyboardInput: {
+    position: 'absolute',
+    left: -24,
+    top: -24,
+    width: 1,
+    height: 1,
+    opacity: 0,
   },
   house: {
     position: 'absolute',

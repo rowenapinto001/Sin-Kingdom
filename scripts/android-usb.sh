@@ -5,10 +5,8 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
 
 if [ -z "${JAVA_HOME:-}" ]; then
-  if [ -x "/snap/android-studio/current/jbr/bin/java" ]; then
-    export JAVA_HOME="/snap/android-studio/current/jbr"
-  elif [ -x "/snap/android-studio/230/jbr/bin/java" ]; then
-    export JAVA_HOME="/snap/android-studio/230/jbr"
+  if [ -x "/opt/android-studio/jbr/bin/java" ]; then
+    export JAVA_HOME="/opt/android-studio/jbr"
   fi
 fi
 

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { LayoutChangeEvent, Platform, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import AnimatedCharacter from '../components/AnimatedCharacter';
 import DPad from '../components/DPad';
 import { allCharacterConfigs, getCharacterConfig } from '../data/characterConfigs';
+import { gameSettings } from '../data/gameSettings';
 import { CharacterId, Direction, GameBounds } from '../game/types';
 import { useGameLoop } from '../game/useGameLoop';
+import { mergeDirectionInputs, useKeyboardControls } from '../hooks/useKeyboardControls';
 
 type NpcActor = {
   id: string;
@@ -39,7 +41,14 @@ export default function GameScreen() {
   const { width, height } = useWindowDimensions();
   const stageWidth = Math.min(width, (height * 9) / 16);
   const [bounds, setBounds] = useState<GameBounds>({ width: 0, height: 0 });
-  const [activeDirections, setActiveDirections] = useState<Direction[]>([]);
+  const [touchDirections, setTouchDirections] = useState<Direction[]>([]);
+  const keyboardControls = useKeyboardControls({
+    enabled: gameSettings.keyboardControlsEnabled,
+  });
+  const activeDirections = useMemo(
+    () => mergeDirectionInputs(touchDirections, keyboardControls.activeDirections),
+    [keyboardControls.activeDirections, touchDirections],
+  );
   const [npcActors, setNpcActors] = useState<NpcActor[]>(npcSeeds);
   const npcActorsRef = useRef(npcSeeds);
   const npcTickRef = useRef<number | null>(null);
@@ -55,11 +64,11 @@ export default function GameScreen() {
   };
 
   const pressDirection = (direction: Direction) => {
-    setActiveDirections((current) => (current.includes(direction) ? current : [...current, direction]));
+    setTouchDirections((current) => (current.includes(direction) ? current : [...current, direction]));
   };
 
   const releaseDirection = (direction: Direction) => {
-    setActiveDirections((current) => current.filter((item) => item !== direction));
+    setTouchDirections((current) => current.filter((item) => item !== direction));
   };
 
   useEffect(() => {
@@ -121,6 +130,16 @@ export default function GameScreen() {
   return (
     <View style={styles.appRoot}>
       <View style={[styles.root, { width: stageWidth }]} onLayout={handleLayout}>
+        {Platform.OS !== 'web' ? (
+          <TextInput
+            autoFocus
+            caretHidden
+            showSoftInputOnFocus={false}
+            value=""
+            onKeyPress={(event) => keyboardControls.onNativeKeyPress(event)}
+            style={styles.keyboardInput}
+          />
+        ) : null}
         <View style={styles.gridOverlay} pointerEvents="none" />
         <View style={styles.floorGlow} pointerEvents="none" />
 
@@ -184,6 +203,14 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     backgroundColor: '#11131a',
     overflow: 'hidden',
+  },
+  keyboardInput: {
+    position: 'absolute',
+    left: -24,
+    top: -24,
+    width: 1,
+    height: 1,
+    opacity: 0,
   },
   gridOverlay: {
     position: 'absolute',

@@ -2009,10 +2009,10 @@ const styles = StyleSheet.create({
   },
   hud: {
     position: 'absolute',
-    left: 16,
+    right: 16,
     top: 16,
-    maxWidth: 430,
-    padding: 12,
+    width: 230,
+    padding: 10,
     borderRadius: 10,
     backgroundColor: 'rgba(4, 4, 10, 0.78)',
     borderWidth: 1,
@@ -2020,13 +2020,13 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: '900',
   },
   status: {
     marginTop: 4,
     color: '#f3d9ff',
-    fontSize: 13,
+    fontSize: 10,
     fontWeight: '700',
   },
   atmosphereBadge: {

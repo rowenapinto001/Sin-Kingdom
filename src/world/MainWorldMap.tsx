@@ -1109,9 +1109,12 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         />
       </View>
 
-      <View style={styles.hud}>
-        <Text style={styles.title}>Sin Kingdom World</Text>
-        <Text style={styles.status}>
+      <MiniMap player={player} boss={boss} npcs={npcs} footsteps={footsteps} />
+      <View pointerEvents="none" style={styles.topLeftInstruction}>
+        <Text style={styles.topLeftInstructionTitle} numberOfLines={1}>
+          Sin Kingdom World
+        </Text>
+        <Text style={styles.topLeftInstructionText} numberOfLines={2}>
           {playerMode === 'driving_boat'
             ? message
             : nearbyDock
@@ -1121,7 +1124,6 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
                 : message}
         </Text>
       </View>
-      <MiniMap player={player} boss={boss} npcs={npcs} footsteps={footsteps} />
       {__DEV__ ? (
         <View style={styles.atmosphereBadge}>
           <Text style={styles.atmosphereBadgeText}>
@@ -1162,6 +1164,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#08110d',
     overflow: 'hidden',
+    direction: 'ltr',
   },
   keyboardInput: {
     position: 'absolute',
@@ -1899,26 +1902,30 @@ const styles = StyleSheet.create({
     textShadowColor: '#000',
     textShadowRadius: 3,
   },
-  hud: {
+  topLeftInstruction: {
     position: 'absolute',
-    left: 16,
-    top: 16,
-    width: 170,
-    padding: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(4, 4, 10, 0.78)',
+    left: 8,
+    top: 8,
+    width: 158,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: 'rgba(4, 4, 10, 0.82)',
     borderWidth: 1,
     borderColor: '#ff2e8a',
+    zIndex: 950,
+    elevation: 950,
   },
-  title: {
+  topLeftInstructionTitle: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '900',
   },
-  status: {
-    marginTop: 4,
+  topLeftInstructionText: {
+    marginTop: 3,
     color: '#f3d9ff',
-    fontSize: 9,
+    fontSize: 8,
+    lineHeight: 10,
     fontWeight: '700',
   },
   atmosphereBadge: {

@@ -1901,10 +1901,10 @@ const styles = StyleSheet.create({
   },
   hud: {
     position: 'absolute',
-    right: 16,
+    left: 16,
     top: 16,
-    width: 230,
-    padding: 10,
+    width: 170,
+    padding: 8,
     borderRadius: 10,
     backgroundColor: 'rgba(4, 4, 10, 0.78)',
     borderWidth: 1,
@@ -1912,13 +1912,13 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '900',
   },
   status: {
     marginTop: 4,
     color: '#f3d9ff',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
   },
   atmosphereBadge: {

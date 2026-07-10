@@ -38,7 +38,7 @@ export const friendsHouseExteriorInteractZones = [
   },
   {
     id: 'talkArion',
-    label: 'ENTER HOUSE',
+    label: 'Talk to Friend',
     x: 600,
     y: 690,
     width: 180,

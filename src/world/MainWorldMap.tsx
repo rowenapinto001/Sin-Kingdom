@@ -75,28 +75,23 @@ type MainWorldMapProps = {
 
 type ShipSide = 'west' | 'east' | 'bridge';
 
-const MINIMAP_WIDTH = 145;
-const MINIMAP_HEIGHT = 106;
-const MINIMAP_SCALE_X = MINIMAP_WIDTH / WORLD_WIDTH;
-const MINIMAP_SCALE_Y = MINIMAP_HEIGHT / WORLD_HEIGHT;
+// Boating Dock sits at (900,700,1300,900); the sea corridor runs south from
+// there along the west vertical road down toward Rani-Raj Mahal and the
+// Airport, crossed by the Friends Canal Bridge near y=3300.
 const SHIP_DOCK_ZONES: Array<Rect & { side: ShipSide }> = [
-  { side: 'west', x: 190, y: 300, width: 430, height: 480 },
-  { side: 'bridge', x: 1030, y: 1830, width: 340, height: 380 },
-  { side: 'east', x: 210, y: 7770, width: 440, height: 300 },
+  { side: 'west', x: 850, y: 1500, width: 430, height: 350 },
+  { side: 'bridge', x: 1150, y: 3150, width: 340, height: 300 },
+  { side: 'east', x: 850, y: 5600, width: 440, height: 300 },
 ];
 const BOAT_WORLD_WIDTH = 102;
 const BOAT_WORLD_HEIGHT = 54;
 const BOAT_WATER_LANES: Rect[] = [
-  { x: 70, y: 660, width: 1180, height: 8040 },
-  { x: 150, y: 360, width: 700, height: 360 },
-  { x: 54, y: 1918, width: 1290, height: 126 },
+  { x: 750, y: 700, width: 900, height: 5300 },
+  { x: 900, y: 700, width: 1100, height: 850 },
 ];
 const BOAT_BLOCKERS: Rect[] = [
-  { x: 250, y: 1420, width: 210, height: 140 },
-  { x: 790, y: 2380, width: 230, height: 150 },
-  { x: 360, y: 3820, width: 260, height: 170 },
-  { x: 760, y: 5650, width: 280, height: 180 },
-  { x: 260, y: 7600, width: 320, height: 220 },
+  { x: 1200, y: 2700, width: 450, height: 950 },
+  { x: 750, y: 5200, width: 900, height: 1000 },
 ];
 
 function clamp(value: number, min: number, max: number) {
@@ -200,8 +195,8 @@ function nearestDockToRect(rect: Rect) {
 function boatSpawnForDock(side: ShipSide): BoatState {
   if (side === 'bridge') {
     return {
-      x: 1068,
-      y: 1968,
+      x: 1200,
+      y: 3320,
       heading: 0,
       speed: 0,
       fuel: 100,
@@ -210,8 +205,8 @@ function boatSpawnForDock(side: ShipSide): BoatState {
   }
 
   return {
-    x: side === 'west' ? 365 : 405,
-    y: side === 'west' ? 675 : 7835,
+    x: side === 'west' ? 1050 : 1050,
+    y: side === 'west' ? 1150 : 5750,
     heading: side === 'west' ? 90 : 270,
     speed: 0,
     fuel: 100,
@@ -505,126 +500,6 @@ function RoadDecorationLayer({ lightsEnabled, glowColor }: { lightsEnabled: bool
   );
 }
 
-function mapPoint(x: number, y: number) {
-  return {
-    left: x * MINIMAP_SCALE_X,
-    top: y * MINIMAP_SCALE_Y,
-  };
-}
-
-function MiniWorldMap({
-  player,
-  boss,
-  npcs,
-  footsteps,
-}: {
-  player: WorldActor;
-  boss: WorldActor;
-  npcs: NpcRuntime[];
-  footsteps: FootstepPoint[];
-}) {
-  const playerPoint = mapPoint(player.x + PLAYER_WORLD_SIZE / 2, player.y + PLAYER_WORLD_SIZE / 2);
-  const bossPoint = mapPoint(boss.x + PLAYER_WORLD_SIZE / 2, boss.y + PLAYER_WORLD_SIZE / 2);
-  const policeNpcs = npcs.filter((npc) => npc.role === 'police');
-  const policeClose = policeNpcs.some((npc) => Math.hypot(npc.x - player.x, npc.y - player.y) < 780);
-
-  return (
-    <View style={styles.minimapPanel}>
-      <View style={styles.minimapHeader}>
-        <Text style={styles.minimapTitle}>SIN KINGDOM</Text>
-        <Text style={[styles.minimapAlert, policeClose && styles.minimapAlertActive]}>
-          {policeClose ? 'POLICE BEHIND' : 'WORLD MAP'}
-        </Text>
-      </View>
-      <View style={styles.minimapCanvas}>
-        {worldRoadObjects.map((object) => {
-          const point = mapPoint(object.x, object.y);
-          return (
-            <View
-              key={object.id}
-              style={[
-                styles.minimapObject,
-                {
-                  left: point.left,
-                  top: point.top,
-                  width: Math.max(1, object.width * MINIMAP_SCALE_X),
-                  height: Math.max(1, object.height * MINIMAP_SCALE_Y),
-                  transform: object.rotate ? [{ rotate: object.rotate }] : undefined,
-                },
-                object.kind === 'footpath' && styles.minimapFootpath,
-                object.kind === 'road' && styles.minimapRoad,
-                object.kind === 'bridge' && styles.minimapBridge,
-                object.kind === 'water' && styles.minimapWater,
-              ]}
-            />
-          );
-        })}
-        {worldLocations.map((location, index) => {
-          const point = mapPoint(location.x, location.y);
-          return (
-            <View
-              key={location.id}
-              style={[
-                styles.minimapLocation,
-                {
-                  left: point.left,
-                  top: point.top,
-                  width: Math.max(8, location.width * MINIMAP_SCALE_X),
-                  height: Math.max(7, location.height * MINIMAP_SCALE_Y),
-                  borderColor: location.restricted ? '#ff3030' : location.accent,
-                },
-              ]}
-            >
-              <Text style={styles.minimapLocationText}>{index + 1}</Text>
-            </View>
-          );
-        })}
-        {footsteps.map((step, index) => {
-          const point = mapPoint(step.x, step.y);
-          return (
-            <View
-              key={step.id}
-              style={[
-                styles.minimapFootstep,
-                {
-                  left: point.left,
-                  top: point.top,
-                  opacity: 0.22 + index / Math.max(1, footsteps.length) * 0.68,
-                },
-              ]}
-            />
-          );
-        })}
-        <View style={[styles.minimapBossMarker, { left: bossPoint.left - 2.5, top: bossPoint.top - 2.5 }]} />
-        {policeNpcs.map((npc) => {
-          const point = mapPoint(npc.x + PLAYER_WORLD_SIZE / 2, npc.y + PLAYER_WORLD_SIZE / 2);
-          const close = Math.hypot(npc.x - player.x, npc.y - player.y) < 780;
-          return (
-            <View key={npc.id} style={[styles.minimapPoliceMarker, close && styles.minimapPoliceMarkerActive, { left: point.left - 4, top: point.top - 4 }]}>
-              <Text style={styles.minimapPoliceText}>!</Text>
-            </View>
-          );
-        })}
-        <View style={[styles.minimapPlayerMarker, { left: playerPoint.left - 4, top: playerPoint.top - 4 }]}>
-          <View style={styles.minimapPlayerDot} />
-        </View>
-        <View style={styles.compass}>
-          <Text style={styles.compassText}>N</Text>
-          <Text style={styles.compassMid}>+</Text>
-        </View>
-      </View>
-      <View style={styles.minimapLegend}>
-        <View style={[styles.legendDot, styles.legendPlayer]} />
-        <Text style={styles.legendText}>You</Text>
-        <View style={[styles.legendDot, styles.legendPolice]} />
-        <Text style={styles.legendText}>Police</Text>
-        <View style={[styles.legendDot, styles.legendStep]} />
-        <Text style={styles.legendText}>Footsteps</Text>
-      </View>
-    </View>
-  );
-}
-
 export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWorldMapProps) {
   const { width, height } = useWindowDimensions();
   const atmosphere = useIndianTimeAtmosphere();
@@ -632,6 +507,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const npcBoatA = useRef(new Animated.Value(0)).current;
   const npcBoatB = useRef(new Animated.Value(0)).current;
   const [touchDirections, setTouchDirections] = useState<Direction[]>([]);
+  const touchDirectionsRef = useRef<Direction[]>([]);
   const activeDirectionsRef = useRef<Direction[]>([]);
   const [isFlying, setIsFlying] = useState(false);
   const [playerMode, setPlayerMode] = useState<PlayerMode>('walking');
@@ -642,6 +518,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const [caughtByPolice, setCaughtByPolice] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [playerAction, setPlayerAction] = useState<CharacterAction>('idle');
+  const playerActionRef = useRef<CharacterAction>('idle');
   const shootTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [player, setPlayer] = useState<WorldActor>({
     x: PLAYER_HOUSE_SPAWN.x,
@@ -683,6 +560,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     [keyboardControls.activeDirections, touchDirections],
   );
   const clearMovementInput = useCallback(() => {
+    touchDirectionsRef.current = [];
     setTouchDirections([]);
     keyboardControls.resetKeyboardControls();
     activeDirectionsRef.current = [];
@@ -734,6 +612,10 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   }, [activeDirections]);
 
   useEffect(() => {
+    playerActionRef.current = playerAction;
+  }, [playerAction]);
+
+  useEffect(() => {
     playerModeRef.current = playerMode;
   }, [playerMode]);
 
@@ -748,9 +630,9 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         const directions = activeDirectionsRef.current;
         const steering = (directions.includes('left') ? -1 : 0) + (directions.includes('right') ? 1 : 0);
         const throttle = directions.includes('up') ? 1 : directions.includes('down') ? -0.7 : 0;
-        const heading = (currentBoat.heading + steering * 96 * deltaSeconds + 360) % 360;
-        const rawSpeed = currentBoat.speed + throttle * 120 * deltaSeconds - Math.sign(currentBoat.speed) * 14 * deltaSeconds;
-        const speed = Math.abs(rawSpeed) < 1 ? 0 : clamp(rawSpeed, -45, 145);
+        const heading = (currentBoat.heading + steering * 140 * deltaSeconds + 360) % 360;
+        const rawSpeed = currentBoat.speed + throttle * 220 * deltaSeconds - Math.sign(currentBoat.speed) * 18 * deltaSeconds;
+        const speed = Math.abs(rawSpeed) < 1 ? 0 : clamp(rawSpeed, -80, 220);
         const radians = (heading * Math.PI) / 180;
         const candidate = {
           x: currentBoat.x + Math.cos(radians) * speed * deltaSeconds,
@@ -852,7 +734,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
           setFootsteps(footstepsRef.current);
         }
       }
-      if (playerAction !== 'shoot') {
+      if (playerActionRef.current !== 'shoot') {
         setPlayerAction(nextPlayer.isMoving ? (isRunning ? 'run' : 'walk') : 'idle');
       }
 
@@ -862,7 +744,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
       const bossDy = followTarget.y - currentBoss.y;
       const bossDistance = Math.hypot(bossDx, bossDy);
       const bossMoves = bossDistance > 12;
-      const bossStep = bossMoves ? Math.min(bossDistance, 150 * deltaSeconds) / bossDistance : 0;
+      const bossStep = bossMoves ? Math.min(bossDistance, 230 * deltaSeconds) / bossDistance : 0;
       const bossCandidate = {
         x: currentBoss.x + bossDx * bossStep,
         y: currentBoss.y + bossDy * bossStep,
@@ -909,14 +791,20 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
       if (shootTimerRef.current) clearTimeout(shootTimerRef.current);
       lastTimestampRef.current = null;
     };
-  }, [caughtByPolice, clearMovementInput, isRunning, playerAction]);
+  }, [caughtByPolice, clearMovementInput, isRunning]);
 
   const pressDirection = (direction: Direction) => {
-    setTouchDirections((current) => (current.includes(direction) ? current : [...current, direction]));
+    const next = touchDirectionsRef.current.includes(direction) ? touchDirectionsRef.current : [...touchDirectionsRef.current, direction];
+    touchDirectionsRef.current = next;
+    activeDirectionsRef.current = mergeDirectionInputs(next, keyboardControls.activeDirections);
+    setTouchDirections(next);
   };
 
   const releaseDirection = (direction: Direction) => {
-    setTouchDirections((current) => current.filter((item) => item !== direction));
+    const next = touchDirectionsRef.current.filter((item) => item !== direction);
+    touchDirectionsRef.current = next;
+    activeDirectionsRef.current = mergeDirectionInputs(next, keyboardControls.activeDirections);
+    setTouchDirections(next);
   };
 
   const enterNearbyLocation = () => {
@@ -1031,9 +919,12 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const shoot = () => {
     if (shootTimerRef.current) clearTimeout(shootTimerRef.current);
     clearMovementInput();
+    playerActionRef.current = 'shoot';
     setPlayerAction('shoot');
     shootTimerRef.current = setTimeout(() => {
-      setPlayerAction(playerRef.current.isMoving ? (isRunning ? 'run' : 'walk') : 'idle');
+      const nextAction = playerRef.current.isMoving ? (isRunning ? 'run' : 'walk') : 'idle';
+      playerActionRef.current = nextAction;
+      setPlayerAction(nextAction);
     }, 430);
   };
 
@@ -1113,7 +1004,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
 
   return (
     <View style={styles.root}>
-      {Platform.OS !== 'web' ? (
+      {Platform.OS === 'ios' ? (
         <TextInput
           autoFocus
           caretHidden
@@ -2048,195 +1939,6 @@ const styles = StyleSheet.create({
   atmosphereBadgeText: {
     color: '#fff2c9',
     fontSize: 11,
-    fontWeight: '900',
-  },
-  minimapPanel: {
-    position: 'absolute',
-    right: 16,
-    top: 14,
-    width: MINIMAP_WIDTH + 12,
-    padding: 5,
-    borderRadius: 7,
-    backgroundColor: 'rgba(3, 8, 12, 0.9)',
-    borderWidth: 1.5,
-    borderColor: '#ff2e8a',
-    shadowColor: '#ff2e8a',
-    shadowOpacity: 0.55,
-    shadowRadius: 10,
-    zIndex: 50,
-  },
-  minimapHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginBottom: 3,
-  },
-  minimapTitle: {
-    color: '#ff4f9e',
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0,
-    textShadowColor: '#ff2e8a',
-    textShadowRadius: 4,
-  },
-  minimapAlert: {
-    color: '#f8f3e8',
-    fontSize: 5,
-    fontWeight: '900',
-  },
-  minimapAlertActive: {
-    color: '#ff3030',
-    textShadowColor: '#ff3030',
-    textShadowRadius: 6,
-  },
-  minimapCanvas: {
-    width: MINIMAP_WIDTH,
-    height: MINIMAP_HEIGHT,
-    overflow: 'hidden',
-    borderRadius: 4,
-    backgroundColor: '#183d24',
-    borderWidth: 1,
-    borderColor: 'rgba(255,189,40,0.72)',
-  },
-  minimapObject: {
-    position: 'absolute',
-    borderRadius: 2,
-  },
-  minimapRoad: {
-    backgroundColor: '#242830',
-    borderWidth: 0.5,
-    borderColor: '#ffca4a',
-  },
-  minimapBridge: {
-    backgroundColor: '#30343d',
-    borderWidth: 0.7,
-    borderColor: '#d6c088',
-  },
-  minimapFootpath: {
-    backgroundColor: '#8b8077',
-    opacity: 0.72,
-  },
-  minimapWater: {
-    backgroundColor: '#15799a',
-    borderRadius: 8,
-    opacity: 0.92,
-  },
-  minimapLocation: {
-    position: 'absolute',
-    borderWidth: 1,
-    borderRadius: 2,
-    backgroundColor: 'rgba(5,5,12,0.72)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  minimapLocationText: {
-    color: '#fff7db',
-    fontSize: 4,
-    fontWeight: '900',
-  },
-  minimapFootstep: {
-    position: 'absolute',
-    width: 2.4,
-    height: 2.4,
-    borderRadius: 2,
-    backgroundColor: '#fff4c0',
-  },
-  minimapPlayerMarker: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: '#8cff75',
-    backgroundColor: 'rgba(35,255,100,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  minimapPlayerDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: '#d9ff70',
-  },
-  minimapBossMarker: {
-    position: 'absolute',
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    borderWidth: 1,
-    borderColor: '#ffd86e',
-    backgroundColor: '#7e4bff',
-  },
-  minimapPoliceMarker: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 2,
-    backgroundColor: '#08111c',
-    borderWidth: 1,
-    borderColor: '#ff3030',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  minimapPoliceMarkerActive: {
-    backgroundColor: '#ff3030',
-    shadowColor: '#ff3030',
-    shadowOpacity: 0.9,
-    shadowRadius: 7,
-  },
-  minimapPoliceText: {
-    color: '#fff',
-    fontSize: 5,
-    fontWeight: '900',
-  },
-  minimapLegend: {
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  legendDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 4,
-  },
-  legendPlayer: {
-    backgroundColor: '#8cff75',
-  },
-  legendPolice: {
-    backgroundColor: '#ff3030',
-  },
-  legendStep: {
-    backgroundColor: '#fff4c0',
-  },
-  legendText: {
-    color: '#f8f3e8',
-    fontSize: 5,
-    fontWeight: '800',
-  },
-  compass: {
-    position: 'absolute',
-    right: 4,
-    top: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.72)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.28)',
-  },
-  compassText: {
-    position: 'absolute',
-    top: -1,
-    color: '#fff',
-    fontSize: 5,
-    fontWeight: '900',
-  },
-  compassMid: {
-    color: '#fff',
-    fontSize: 9,
     fontWeight: '900',
   },
   actions: {

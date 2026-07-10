@@ -1,4 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import SpriteCharacter from './SpriteCharacter';
+import { CharacterConfigId } from '../data/characterConfigs';
 
 type DialogChoice = {
   label: string;
@@ -10,13 +12,23 @@ type DialogBoxProps = {
   text: string;
   choices?: DialogChoice[];
   onClose?: () => void;
+  portraitCharacterId?: CharacterConfigId;
 };
 
-export default function DialogBox({ title, text, choices = [], onClose }: DialogBoxProps) {
+export default function DialogBox({ title, text, choices = [], onClose, portraitCharacterId }: DialogBoxProps) {
   return (
     <View style={styles.root}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.text}>{text}</Text>
+      <View style={styles.body}>
+        {portraitCharacterId ? (
+          <View style={styles.portraitWrap}>
+            <SpriteCharacter characterId={portraitCharacterId} direction="down" isMoving={false} currentAction="idle" scale={1.3} />
+          </View>
+        ) : null}
+        <View style={styles.textColumn}>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.text}>{text}</Text>
+        </View>
+      </View>
       <View style={styles.choices}>
         {choices.map((choice) => (
           <Pressable key={choice.label} style={styles.choiceButton} onPress={choice.onPress}>
@@ -48,6 +60,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.65,
     shadowRadius: 16,
     zIndex: 40,
+  },
+  body: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  portraitWrap: {
+    width: 54,
+    height: 74,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255,46,138,0.65)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  textColumn: {
+    flex: 1,
   },
   title: {
     color: '#ffc334',

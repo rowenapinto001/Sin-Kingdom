@@ -2,6 +2,7 @@ package com.rowena001.sinkingdom
 
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
@@ -28,6 +29,36 @@ class MainActivity : ReactActivity() {
     super.onWindowFocusChanged(hasFocus)
     if (hasFocus) {
       enableImmersiveMode()
+    }
+  }
+
+  override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    val keyName = movementKeyName(event.keyCode) ?: return super.dispatchKeyEvent(event)
+    val eventType = when (event.action) {
+      KeyEvent.ACTION_DOWN -> "keydown"
+      KeyEvent.ACTION_UP -> "keyup"
+      else -> return super.dispatchKeyEvent(event)
+    }
+
+    HardwareKeyboardModule.emitKeyEvent(eventType, keyName, event.repeatCount)
+    return true
+  }
+
+  private fun movementKeyName(keyCode: Int): String? {
+    return when (keyCode) {
+      KeyEvent.KEYCODE_W,
+      KeyEvent.KEYCODE_DPAD_UP,
+      KeyEvent.KEYCODE_SYSTEM_NAVIGATION_UP -> "arrowup"
+      KeyEvent.KEYCODE_S,
+      KeyEvent.KEYCODE_DPAD_DOWN,
+      KeyEvent.KEYCODE_SYSTEM_NAVIGATION_DOWN -> "arrowdown"
+      KeyEvent.KEYCODE_A,
+      KeyEvent.KEYCODE_DPAD_LEFT,
+      KeyEvent.KEYCODE_SYSTEM_NAVIGATION_LEFT -> "arrowleft"
+      KeyEvent.KEYCODE_D,
+      KeyEvent.KEYCODE_DPAD_RIGHT,
+      KeyEvent.KEYCODE_SYSTEM_NAVIGATION_RIGHT -> "arrowright"
+      else -> null
     }
   }
 

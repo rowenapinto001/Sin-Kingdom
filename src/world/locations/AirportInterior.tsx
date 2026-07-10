@@ -14,6 +14,7 @@ export type AirportSceneState =
   | 'outside_airport'
   | 'inside_airport'
   | 'check_in'
+  | 'security_cleared'
   | 'choose_destination'
   | 'airplane_cabin'
   | 'flying'
@@ -126,19 +127,25 @@ export default function AirportInterior({
       },
       {
         id: 'checkin',
-        label: 'Check luggage',
+        label: 'Check-In / Luggage',
         rect: { x: 116, y: 252, width: 208, height: 80 },
         disabled: sceneState === 'outside_airport',
       },
       {
-        id: 'destination',
-        label: 'Choose destination',
+        id: 'security',
+        label: 'Security Gate',
         rect: { x: 456, y: 252, width: 214, height: 80 },
         disabled: sceneState === 'outside_airport' || sceneState === 'inside_airport',
       },
       {
+        id: 'boardingGate',
+        label: 'Boarding Gate: Choose Destination',
+        rect: { x: 890, y: 390, width: 160, height: 90 },
+        disabled: sceneState !== 'security_cleared' && sceneState !== 'choose_destination',
+      },
+      {
         id: 'pilot',
-        label: 'Drive Aeroplane',
+        label: 'Board Aeroplane',
         rect: isInside ? { x: 840, y: 252, width: 202, height: 80 } : { x: 850, y: 314, width: 190, height: 78 },
         disabled: sceneState !== 'choose_destination',
       },
@@ -239,21 +246,30 @@ export default function AirportInterior({
     if (zoneId === 'checkin') {
       if (sceneState === 'outside_airport') return;
       setSceneState('check_in');
-      setMessage('Luggage checked. Passenger check-in complete.');
+      setMessage('Luggage checked. Proceed to the Security Gate.');
       return;
     }
-    if (zoneId === 'destination') {
+    if (zoneId === 'security') {
       if (sceneState === 'outside_airport' || sceneState === 'inside_airport') {
-        setMessage('Check luggage first.');
+        setMessage('Check-in first.');
+        return;
+      }
+      setSceneState('security_cleared');
+      setMessage('Security cleared. Head to the Boarding Gate to choose a destination.');
+      return;
+    }
+    if (zoneId === 'boardingGate') {
+      if (sceneState === 'outside_airport' || sceneState === 'inside_airport' || sceneState === 'check_in') {
+        setMessage('Clear the Security Gate first.');
         return;
       }
       setSceneState('choose_destination');
-      setMessage('Choose destination from the airport board.');
+      setMessage('Choose destination from the boarding gate board.');
       return;
     }
     if (zoneId === 'pilot') {
       if (sceneState !== 'choose_destination') {
-        setMessage('Choose destination before driving the aeroplane.');
+        setMessage('Choose destination at the Boarding Gate before boarding.');
         return;
       }
       clearMovementInput();
@@ -270,7 +286,7 @@ export default function AirportInterior({
     }
     onSelectDestination(destinationId);
     setSceneState('choose_destination');
-    setMessage(`Destination selected: ${destination.name}. Go to Pilot / Aeroplane Control.`);
+    setMessage(`Destination selected: ${destination.name}. Board the aeroplane when ready.`);
   };
 
   const openCabin = () => {
@@ -297,7 +313,7 @@ export default function AirportInterior({
 
   return (
     <View style={styles.root}>
-      {Platform.OS !== 'web' ? (
+      {Platform.OS === 'ios' ? (
         <TextInput
           autoFocus
           caretHidden
@@ -339,15 +355,13 @@ export default function AirportInterior({
         <AirportNpcs isInside={isInside} />
       </View>
 
-      {sceneState === 'choose_destination' || sceneState === 'check_in' ? (
+      {sceneState === 'choose_destination' ? (
         <View style={styles.destinationPanel}>
           <View style={styles.panelHeader}>
-            <Text style={styles.panelTitle}>Destination Board</Text>
-            {sceneState === 'choose_destination' ? (
-              <Pressable style={styles.driveNowButton} onPress={openCabin}>
-                <Text style={styles.driveNowText}>DRIVE AEROPLANE</Text>
-              </Pressable>
-            ) : null}
+            <Text style={styles.panelTitle}>Boarding Gate: Destination Board</Text>
+            <Pressable style={styles.driveNowButton} onPress={openCabin}>
+              <Text style={styles.driveNowText}>BOARD AEROPLANE</Text>
+            </Pressable>
           </View>
           <View style={styles.destinationGrid}>
             {destinations.map((destination) => {
@@ -431,11 +445,15 @@ function AirportExteriorArt() {
           <View key={index} style={[styles.canopyPillar, { left: 20 + index * 26 }]} />
         ))}
       </View>
-      <View style={styles.entryPath} />
+      <View style={styles.entryPath}>
+        <Text style={styles.exteriorZoneLabel}>MAIN ENTRANCE</Text>
+      </View>
       <View style={styles.dropOffLoop}>
+        <Text style={styles.exteriorZoneLabel}>DROP-OFF LANE</Text>
         <View style={styles.dropOffIsland} />
       </View>
       <View style={styles.parking}>
+        <Text style={styles.exteriorZoneLabel}>PARKING LOT</Text>
         {Array.from({ length: 22 }).map((_, index) => (
           <View key={index} style={[styles.parkedCar, index % 3 === 0 && styles.parkedCarPink, index % 4 === 0 && styles.parkedCarGold]} />
         ))}
@@ -495,22 +513,23 @@ function AirportInsideArt() {
         <Text style={styles.counterText}>CHECK-IN</Text>
       </View>
       <View style={styles.counterB}>
-        <Text style={styles.counterText}>DESTINATIONS</Text>
+        <Text style={styles.counterText}>SECURITY GATE</Text>
       </View>
       <View style={styles.counterC}>
-        <Text style={styles.counterText}>PILOT</Text>
+        <Text style={styles.counterText}>BOARD PLANE</Text>
       </View>
       <View style={styles.luggageBelt}>
         <View style={styles.luggageOne} />
         <View style={styles.luggageTwo} />
       </View>
+      <Text style={styles.waitingAreaLabel}>WAITING AREA</Text>
       <View style={styles.seatingArea}>
         {Array.from({ length: 10 }).map((_, index) => (
           <View key={index} style={styles.seatDot} />
         ))}
       </View>
       <View style={styles.boardingGate}>
-        <Text style={styles.smallSign}>GATE A</Text>
+        <Text style={styles.smallSign}>BOARDING GATE</Text>
       </View>
     </View>
   );
@@ -787,6 +806,17 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textShadowColor: '#ff2e8a',
     textShadowRadius: 6,
+  },
+  exteriorZoneLabel: {
+    position: 'absolute',
+    left: 4,
+    top: -16,
+    color: '#8ee8ff',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textShadowColor: '#000',
+    textShadowRadius: 4,
   },
   arrivalCanopy: {
     position: 'absolute',
@@ -1212,6 +1242,15 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 6,
     backgroundColor: '#ff2e8a',
+  },
+  waitingAreaLabel: {
+    position: 'absolute',
+    left: 546,
+    top: 370,
+    color: '#8ee8ff',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
   seatingArea: {
     position: 'absolute',

@@ -23,6 +23,9 @@ export default function DPad({ activeDirections, onDirectionPressIn, onDirection
         return (
           <Pressable
             key={button.direction}
+            hitSlop={14}
+            pressRetentionOffset={28}
+            unstable_pressDelay={0}
             onPressIn={() => onDirectionPressIn(button.direction)}
             onPressOut={() => onDirectionPressOut(button.direction)}
             style={[styles.button, button.style, active && styles.buttonActive]}
@@ -46,8 +49,8 @@ const styles = StyleSheet.create({
   },
   button: {
     position: 'absolute',
-    width: 64,
-    height: 64,
+    width: 70,
+    height: 70,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
@@ -66,19 +69,19 @@ const styles = StyleSheet.create({
   },
   up: {
     top: 0,
-    left: 55,
+    left: 52,
   },
   left: {
-    top: 55,
+    top: 52,
     left: 0,
   },
   right: {
-    top: 55,
+    top: 52,
     right: 0,
   },
   down: {
     bottom: 0,
-    left: 55,
+    left: 52,
   },
   center: {
     position: 'absolute',

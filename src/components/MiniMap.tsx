@@ -1,7 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { miniMapRoutes, miniMapTrafficLights, miniMapWaterZone } from '../data/miniMapRoutes';
-import { miniMapNodes } from '../data/locationNodes';
-import { PLAYER_WORLD_SIZE, WORLD_HEIGHT, WORLD_WIDTH } from '../world/worldData';
+import { worldRoadObjects } from '../data/worldRoads';
+import { PLAYER_WORLD_SIZE, WORLD_HEIGHT, WORLD_WIDTH, worldLocations } from '../world/worldData';
 
 type WorldActorPoint = {
   x: number;
@@ -26,12 +25,14 @@ type MiniMapProps = {
   footsteps: FootstepPoint[];
 };
 
+// The minimap is fully data-driven from the real world geometry
+// (worldLocations / worldRoadObjects in worldData.ts / worldRoads.ts),
+// scaled linearly against WORLD_WIDTH/WORLD_HEIGHT - no hand-authored
+// design-space coordinates.
 const CANVAS_WIDTH = 155;
 const CANVAS_HEIGHT = 118;
-const DESIGN_WIDTH = 1000;
-const DESIGN_HEIGHT = 900;
-const SCALE_X = CANVAS_WIDTH / DESIGN_WIDTH;
-const SCALE_Y = CANVAS_HEIGHT / DESIGN_HEIGHT;
+const SCALE_X = CANVAS_WIDTH / WORLD_WIDTH;
+const SCALE_Y = CANVAS_HEIGHT / WORLD_HEIGHT;
 
 function sx(value: number) {
   return value * SCALE_X;
@@ -41,49 +42,16 @@ function sy(value: number) {
   return value * SCALE_Y;
 }
 
-function designPointFromWorld(x: number, y: number) {
+function worldPoint(x: number, y: number) {
   return {
-    left: sx((x / WORLD_WIDTH) * DESIGN_WIDTH),
-    top: sy((y / WORLD_HEIGHT) * DESIGN_HEIGHT),
+    left: sx(x),
+    top: sy(y),
   };
 }
 
-function Segment({ from, to, bridge = false }: { from: { x: number; y: number }; to: { x: number; y: number }; bridge?: boolean }) {
-  const dx = sx(to.x - from.x);
-  const dy = sy(to.y - from.y);
-  const length = Math.hypot(dx, dy);
-  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-
-  return (
-    <View
-      style={[
-        styles.roadSegment,
-        bridge && styles.bridgeSegment,
-        {
-          left: sx(from.x) + dx / 2 - length / 2,
-          top: sy(from.y) + dy / 2 - 4,
-          width: length,
-          transform: [{ rotate: `${angle}deg` }],
-        },
-      ]}
-    >
-      <View style={styles.roadLineTop} />
-      <View style={styles.roadLineBottom} />
-    </View>
-  );
-}
-
-function StarTrafficLight({ x, y, rotation = 0 }: { x: number; y: number; rotation?: number }) {
-  return (
-    <View style={[styles.trafficStar, { left: sx(x) - 4, top: sy(y) - 4, transform: [{ rotate: `${rotation}deg` }] }]}>
-      <Text style={styles.trafficStarText}>★</Text>
-    </View>
-  );
-}
-
 export default function MiniMap({ player, boss, npcs, footsteps }: MiniMapProps) {
-  const playerPoint = designPointFromWorld(player.x + PLAYER_WORLD_SIZE / 2, player.y + PLAYER_WORLD_SIZE / 2);
-  const bossPoint = designPointFromWorld(boss.x + PLAYER_WORLD_SIZE / 2, boss.y + PLAYER_WORLD_SIZE / 2);
+  const playerPoint = worldPoint(player.x + PLAYER_WORLD_SIZE / 2, player.y + PLAYER_WORLD_SIZE / 2);
+  const bossPoint = worldPoint(boss.x + PLAYER_WORLD_SIZE / 2, boss.y + PLAYER_WORLD_SIZE / 2);
   const policeNpcs = npcs.filter((npc) => npc.role === 'police');
   const policeClose = policeNpcs.some((npc) => Math.hypot(npc.x - player.x, npc.y - player.y) < 780);
 
@@ -94,51 +62,50 @@ export default function MiniMap({ player, boss, npcs, footsteps }: MiniMapProps)
         <Text style={styles.subtitle}>{policeClose ? 'POLICE BEHIND' : 'WORLD MAP'}</Text>
       </View>
       <View style={styles.canvas}>
-        <View
-          style={[
-            styles.water,
-            {
-              left: sx(miniMapWaterZone.x),
-              top: sy(miniMapWaterZone.y),
-              width: sx(miniMapWaterZone.width),
-              height: sy(miniMapWaterZone.height),
-            },
-          ]}
-        >
-          <View style={[styles.waterWave, { top: sy(34), left: sx(24), width: sx(250) }]} />
-          <View style={[styles.waterWave, { top: sy(86), left: sx(54), width: sx(210) }]} />
-          <View style={[styles.waterWave, { top: sy(142), left: sx(18), width: sx(238) }]} />
-        </View>
-        {miniMapRoutes.map((route) => route.points.slice(0, -1).map((point, index) => (
-          <Segment key={`${route.id}-${index}`} from={point} to={route.points[index + 1]} bridge={route.kind === 'bridge'} />
-        )))}
-        {miniMapTrafficLights.map((light) => (
-          <StarTrafficLight key={light.id} x={light.x} y={light.y} rotation={light.rotation} />
-        ))}
-        {miniMapNodes.map((node) => (
+        {worldRoadObjects.map((object) => (
           <View
-            key={node.id}
+            key={object.id}
+            style={[
+              styles.mapObject,
+              {
+                left: sx(object.x),
+                top: sy(object.y),
+                width: Math.max(1, sx(object.width)),
+                height: Math.max(1, sy(object.height)),
+                transform: object.rotate ? [{ rotate: object.rotate }] : undefined,
+              },
+              object.kind === 'footpath' && styles.mapFootpath,
+              object.kind === 'road' && styles.mapRoad,
+              object.kind === 'bridge' && styles.mapBridge,
+              object.kind === 'water' && styles.mapWater,
+            ]}
+          />
+        ))}
+        {worldLocations.map((location, index) => (
+          <View
+            key={location.id}
             style={[
               styles.node,
-              node.restricted && styles.nodeRestricted,
+              location.restricted && styles.nodeRestricted,
               {
-                left: sx(node.x) - sx(node.width ?? 48) / 2,
-                top: sy(node.y) - sy(node.height ?? 42) / 2,
-                width: sx(node.width ?? 48),
-                height: sy(node.height ?? 42),
+                left: sx(location.x),
+                top: sy(location.y),
+                width: Math.max(8, sx(location.width)),
+                height: Math.max(7, sy(location.height)),
+                borderColor: location.restricted ? '#ff3030' : location.accent,
               },
             ]}
           >
-            <Text style={styles.nodeText}>{node.number}</Text>
+            <Text style={styles.nodeText}>{index + 1}</Text>
           </View>
         ))}
         {footsteps.slice(-18).map((step, index) => {
-          const point = designPointFromWorld(step.x, step.y);
+          const point = worldPoint(step.x, step.y);
           return <View key={step.id} style={[styles.footstep, { left: point.left, top: point.top, opacity: 0.25 + index * 0.04 }]} />;
         })}
         <View style={[styles.bossMarker, { left: bossPoint.left - 2, top: bossPoint.top - 2 }]} />
         {policeNpcs.map((npc) => {
-          const point = designPointFromWorld(npc.x + PLAYER_WORLD_SIZE / 2, npc.y + PLAYER_WORLD_SIZE / 2);
+          const point = worldPoint(npc.x + PLAYER_WORLD_SIZE / 2, npc.y + PLAYER_WORLD_SIZE / 2);
           return (
             <View key={npc.id} style={[styles.policeMarker, { left: point.left - 4, top: point.top - 4 }]}>
               <Text style={styles.policeText}>!</Text>
@@ -209,50 +176,28 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
     borderColor: '#d7a92b',
   },
-  water: {
+  mapObject: {
     position: 'absolute',
-    borderRadius: 7,
-    backgroundColor: '#087fa5',
-    borderWidth: 1.2,
-    borderColor: '#6cf0ff',
-    zIndex: 1,
-    overflow: 'hidden',
-  },
-  waterWave: {
-    position: 'absolute',
-    height: 2,
     borderRadius: 2,
-    backgroundColor: 'rgba(173,240,255,0.82)',
   },
-  roadSegment: {
-    position: 'absolute',
-    height: 8,
-    marginTop: -4,
-    backgroundColor: '#161e1c',
-    borderRadius: 5,
-    borderWidth: 0.8,
-    borderColor: '#d7a92b',
-    zIndex: 3,
+  mapRoad: {
+    backgroundColor: '#242830',
+    borderWidth: 0.5,
+    borderColor: '#ffca4a',
   },
-  bridgeSegment: {
-    backgroundColor: '#262b31',
-    borderColor: '#f3d38a',
+  mapBridge: {
+    backgroundColor: '#30343d',
+    borderWidth: 0.7,
+    borderColor: '#d6c088',
   },
-  roadLineTop: {
-    position: 'absolute',
-    left: 2,
-    right: 2,
-    top: 1.4,
-    height: 1,
-    backgroundColor: '#f2cc55',
+  mapFootpath: {
+    backgroundColor: '#8b8077',
+    opacity: 0.72,
   },
-  roadLineBottom: {
-    position: 'absolute',
-    left: 2,
-    right: 2,
-    bottom: 1.4,
-    height: 1,
-    backgroundColor: '#f2cc55',
+  mapWater: {
+    backgroundColor: '#087fa5',
+    borderRadius: 4,
+    opacity: 0.92,
   },
   node: {
     position: 'absolute',
@@ -271,17 +216,6 @@ const styles = StyleSheet.create({
     color: '#fff7db',
     fontSize: 6,
     fontWeight: '900',
-  },
-  trafficStar: {
-    position: 'absolute',
-    zIndex: 6,
-  },
-  trafficStarText: {
-    color: '#ff2e8a',
-    fontSize: 9,
-    fontWeight: '900',
-    textShadowColor: '#ff2e8a',
-    textShadowRadius: 4,
   },
   footstep: {
     position: 'absolute',

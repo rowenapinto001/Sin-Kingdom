@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { DeviceEventEmitter, Platform } from 'react-native';
 import { Direction } from '../game/types';
 
 type NativeKeyPressEvent = {
   nativeEvent: {
     key: string;
   };
+};
+
+type AndroidHardwareKeyEvent = {
+  type?: 'keydown' | 'keyup';
+  key?: string;
+  repeatCount?: number;
 };
 
 type UseKeyboardControlsOptions = {
@@ -52,6 +58,7 @@ export type KeyboardControls = {
 };
 
 const DIRECTION_ORDER: Direction[] = ['up', 'down', 'left', 'right'];
+const ANDROID_HARDWARE_KEY_EVENT = 'SinKingdomHardwareKey';
 
 function normalizeKeyId(key: string) {
   return key.trim().toLowerCase();
@@ -184,6 +191,27 @@ export function useKeyboardControls({
     setActiveDirections((current) => (current.length === 0 ? current : []));
   }, [clearNativeReleaseTimers]);
 
+  const releaseNativeDirection = useCallback((nextDirection: Direction) => {
+    const existingTimer = nativeReleaseTimersRef.current[nextDirection];
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      delete nativeReleaseTimersRef.current[nextDirection];
+    }
+    setKeyPressed(`native:${nextDirection}`, false);
+  }, [setKeyPressed]);
+
+  const holdNativeDirection = useCallback((nextDirection: Direction, releaseMs: number) => {
+    const nativeKeyId = `native:${nextDirection}`;
+    setKeyPressed(nativeKeyId, true);
+
+    const existingTimer = nativeReleaseTimersRef.current[nextDirection];
+    if (existingTimer) clearTimeout(existingTimer);
+    nativeReleaseTimersRef.current[nextDirection] = setTimeout(() => {
+      setKeyPressed(nativeKeyId, false);
+      delete nativeReleaseTimersRef.current[nextDirection];
+    }, releaseMs);
+  }, [setKeyPressed]);
+
   useEffect(() => {
     if (!controlsEnabled) resetKeyboardControls();
   }, [controlsEnabled, resetKeyboardControls]);
@@ -232,6 +260,28 @@ export function useKeyboardControls({
     };
   }, [controlsEnabled, resetKeyboardControls, setKeyPressed]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+
+    const subscription = DeviceEventEmitter.addListener(ANDROID_HARDWARE_KEY_EVENT, (event: AndroidHardwareKeyEvent) => {
+      if (!controlsEnabled) return;
+
+      const keyId = normalizeKeyId(event.key ?? '');
+      const nextDirection = directionFromKeyId(keyId);
+      if (!nextDirection) return;
+
+      if (event.type === 'keydown') {
+        holdNativeDirection(nextDirection, 900);
+      } else if (event.type === 'keyup') {
+        releaseNativeDirection(nextDirection);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [controlsEnabled, holdNativeDirection, releaseNativeDirection]);
+
   useEffect(() => () => {
     pressedKeyIdsRef.current.clear();
     clearNativeReleaseTimers();
@@ -244,20 +294,11 @@ export function useKeyboardControls({
     const nextDirection = directionFromKeyId(keyId);
     if (!nextDirection) return;
 
-    // Managed Expo native does not expose global hardware keyup events.
-    // This focused TextInput fallback stays smooth when emulators repeat held
-    // keys; exact Android hardware keyup support needs a dev client/native
-    // module such as react-native-keyevent after prebuild support is enabled.
-    const nativeKeyId = `native:${nextDirection}`;
-    setKeyPressed(nativeKeyId, true);
-
-    const existingTimer = nativeReleaseTimersRef.current[nextDirection];
-    if (existingTimer) clearTimeout(existingTimer);
-    nativeReleaseTimersRef.current[nextDirection] = setTimeout(() => {
-      setKeyPressed(nativeKeyId, false);
-      delete nativeReleaseTimersRef.current[nextDirection];
-    }, fallbackReleaseMs);
-  }, [controlsEnabled, fallbackReleaseMs, setKeyPressed]);
+    // Android hardware keys use the Activity event bridge above. This focused
+    // TextInput fallback remains for native platforms that only surface key
+    // presses through focused text inputs.
+    holdNativeDirection(nextDirection, fallbackReleaseMs);
+  }, [controlsEnabled, fallbackReleaseMs, holdNativeDirection]);
 
   const up = activeDirections.includes('up');
   const down = activeDirections.includes('down');

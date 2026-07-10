@@ -8,182 +8,205 @@ import {
 } from '../world/roadSystem';
 import { ROAD_WIDTH, RoadDecoration } from '../world/roadTiles';
 import { WorldObject } from '../world/worldTypes';
-import { bridgeConfigs } from './bridgeConfigs';
 
 const highway = { width: 96, color: '#22272f' };
 const districtRoad = { width: 78, color: '#252a32' };
 
+// Road density is kept modest on purpose (a handful of long connectors plus a
+// few key junctions) for render performance across the much larger
+// 12000x8000 world - not a dense street grid.
 const mainRoads: WorldObject[] = [
-  ...createCurvedRoad('road-north-gardenway', 'North Gardenway', [
-    { x: 380, y: 560 },
-    { x: 760, y: 472 },
-    { x: 1220, y: 618 },
-    { x: 1705, y: 560 },
-    { x: 2100, y: 458 },
-    { x: 2475, y: 560 },
-    { x: 3030, y: 662 },
-    { x: 3520, y: 560 },
-    { x: 4140, y: 468 },
-    { x: 4750, y: 560 },
-  ], highway),
-  ...createCurvedRoad('road-left-land-spine', 'Left Land Spine', [
-    { x: 520, y: 2260 },
-    { x: 520, y: 2710 },
-    { x: 520, y: 3225 },
-  ], highway),
-  ...createCurvedRoad('road-central-s-avenue', 'Empire S Avenue', [
-    { x: 2475, y: 560 },
-    { x: 2610, y: 980 },
-    { x: 2380, y: 1360 },
-    { x: 2475, y: 1885 },
-    { x: 2400, y: 3285 },
-    { x: 2220, y: 4700 },
-    { x: 3150, y: 6100 },
-    { x: 4050, y: 7200 },
-  ], highway),
-  ...createCurvedRoad('road-royal-s-curve', 'Royal S Curve', [
-    { x: 3920, y: 1565 },
-    { x: 3740, y: 1890 },
-    { x: 4200, y: 3650 },
-    { x: 4300, y: 5550 },
-    { x: 4050, y: 7200 },
-  ], districtRoad),
-  ...createCurvedRoad('road-garden-doorway-longway', 'Garden Doorway Longway', [
-    { x: 4050, y: 7200 },
-    { x: 4300, y: 7520 },
-    { x: 4460, y: 7780 },
-    { x: 4680, y: 8095 },
-  ], highway),
-  ...createCurvedRoad('road-doorway-east-loop', 'Doorway East Loop', [
-    { x: 4680, y: 8095 },
-    { x: 4960, y: 7600 },
-    { x: 4820, y: 6600 },
-    { x: 4300, y: 5550 },
-  ], districtRoad),
-  ...createCurvedRoad('road-south-long-parkway', 'South Long Parkway', [
-    { x: 560, y: 7100 },
-    { x: 1150, y: 7000 },
-    { x: 1900, y: 6600 },
-    { x: 3150, y: 6100 },
-    { x: 4050, y: 7200 },
-    { x: 4680, y: 8095 },
+  // 1. North main road: Boating -> Magic City -> Party Party Yeah -> Police Station, y ~ 1150
+  ...createCurvedRoad('road-north-main', 'North Main Road', [
+    { x: 1550, y: 1150 },
+    { x: 3900, y: 1150 },
+    { x: 6400, y: 1150 },
+    { x: 9000, y: 1150 },
   ], highway),
 
-  ...createCurvedRoad('road-boating-entry', 'Lake Entry Road', [
-    { x: 380, y: 560 },
-    { x: 330, y: 500 },
-    { x: 380, y: 445 },
+  // 2. Central main road: Rani-Raj Mahal -> Player House -> Friends House -> Pink Palace, y ~ 3300-3500
+  ...createCurvedRoad('road-central-main', 'Central Main Road', [
+    { x: 1850, y: 3300 },
+    { x: 4000, y: 3400 },
+    { x: 6050, y: 3500 },
+    { x: 8300, y: 3400 },
+    { x: 10600, y: 3300 },
+  ], highway),
+
+  // 3. South main road: Garage -> Rose Temple -> Garden -> Doorway, y ~ 6800
+  ...createCurvedRoad('road-south-main', 'South Main Road', [
+    { x: 1500, y: 6800 },
+    { x: 3900, y: 6800 },
+    { x: 6350, y: 6800 },
+    { x: 8900, y: 6800 },
+  ], highway),
+
+  // 4. West vertical road: Boating -> Rani-Raj Mahal -> Airport -> Garage, x ~ 1500
+  ...createCurvedRoad('road-west-vertical', 'West Vertical Road', [
+    { x: 1550, y: 1150 },
+    { x: 1500, y: 2700 },
+    { x: 1550, y: 3300 },
+    { x: 1500, y: 5700 },
+    { x: 1500, y: 6800 },
+  ], highway),
+
+  // 5. Center vertical road: Magic City -> Player House -> Garden, x ~ 4000-4500
+  ...createCurvedRoad('road-center-vertical', 'Center Vertical Road', [
+    { x: 3900, y: 1150 },
+    { x: 4000, y: 3400 },
+    { x: 4300, y: 5700 },
+    { x: 6350, y: 6800 },
+  ], highway),
+
+  // 6. East vertical road: Police Station -> Pink Palace -> Desert -> Doorway, x ~ 9000-9500
+  ...createCurvedRoad('road-east-vertical', 'East Vertical Road', [
+    { x: 9000, y: 1150 },
+    { x: 9500, y: 2800 },
+    { x: 10600, y: 3300 },
+    { x: 10450, y: 5700 },
+    { x: 8900, y: 6800 },
+  ], highway),
+
+  // 7. Airport highway: Airport -> Player House -> Clock Tower
+  ...createCurvedRoad('road-airport-highway', 'Airport Highway', [
+    { x: 1550, y: 5700 },
+    { x: 4000, y: 5900 },
+    { x: 6050, y: 5600 },
+    { x: 7500, y: 5700 },
+  ], districtRoad),
+
+  // 8. Desert road: Pink Palace -> Desert -> Oasis Lake
+  ...createCurvedRoad('road-desert', 'Desert Road', [
+    { x: 10600, y: 3300 },
+    { x: 10450, y: 5700 },
+    { x: 9560, y: 7380 },
+  ], districtRoad),
+
+  // District entry spurs connecting the main roads to each location's front door.
+  ...createCurvedRoad('road-boating-entry', 'Boating Entry', [
+    { x: 1550, y: 1150 },
+    { x: 1550, y: 1300 },
   ], districtRoad),
   ...createCurvedRoad('road-magic-entry', 'Magic City Entry', [
-    { x: 1705, y: 560 },
-    { x: 1635, y: 490 },
-    { x: 1705, y: 420 },
+    { x: 3900, y: 1150 },
+    { x: 3900, y: 1300 },
   ], districtRoad),
-  ...createCurvedRoad('road-garage-entry', 'Garage Entry', [
-    { x: 2305, y: 560 },
-    { x: 2185, y: 1120 },
-    { x: 2155, y: 1975 },
-  ], districtRoad),
-  ...createCurvedRoad('road-party-entry', 'Club Entry', [
-    { x: 3520, y: 560 },
-    { x: 3605, y: 500 },
-    { x: 3520, y: 440 },
+  ...createCurvedRoad('road-party-entry', 'Party Entry', [
+    { x: 6400, y: 1150 },
+    { x: 6400, y: 1300 },
   ], districtRoad),
   ...createCurvedRoad('road-police-entry', 'Police Entry', [
-    { x: 4750, y: 560 },
-    { x: 4685, y: 625 },
-    { x: 4750, y: 690 },
+    { x: 9000, y: 1150 },
+    { x: 9000, y: 1300 },
   ], districtRoad),
-  ...createCurvedRoad('road-friends-city-connector', 'Friends City Connector', [
-    bridgeConfigs['bridge-friends-canal'].endPoint,
-    { x: 1620, y: 1815 },
-    { x: 2050, y: 1870 },
-    { x: 2475, y: 1885 },
-  ], highway),
-  ...createCurvedRoad('road-player-house-entry', 'Player House Drive', [
-    { x: 520, y: 2260 },
-    { x: 435, y: 2320 },
-    { x: 395, y: 2370 },
+  ...createCurvedRoad('road-mahal-entry', 'Mahal Entry', [
+    { x: 1850, y: 3300 },
+    { x: 1850, y: 3150 },
   ], districtRoad),
-  ...createCurvedRoad('road-mahal-connector', 'Royal Connector', [
-    { x: 3570, y: 1565 },
-    { x: 3750, y: 1488 },
-    { x: 3920, y: 1565 },
+  ...createCurvedRoad('road-player-house-entry', 'Player House Entry', [
+    { x: 6050, y: 3500 },
+    { x: 6050, y: 3600 },
   ], districtRoad),
-  ...createCurvedRoad('road-friends-player-link', 'Friends to Player Link', [
-    { x: 2475, y: 1885 },
-    { x: 1880, y: 2130 },
-    { x: 1180, y: 2350 },
-    { x: 520, y: 2710 },
+  ...createCurvedRoad('road-friends-entry', 'Friends House Entry', [
+    { x: 8300, y: 3400 },
+    { x: 8300, y: 3550 },
   ], districtRoad),
-  ...createCurvedRoad('road-airport-left-entry', 'Airport Left Entry', [
-    { x: 520, y: 3225 },
-    { x: 450, y: 3185 },
-    { x: 390, y: 3220 },
+  ...createCurvedRoad('road-pink-palace-entry', 'Pink Palace Entry', [
+    { x: 10600, y: 3300 },
+    { x: 10600, y: 3200 },
   ], districtRoad),
-  ...createStraightRoad('road-airport-runway-strip', 'Airport Runway', { x: 220, y: 3440 }, { x: 1040, y: 3440 }, { width: 70, color: '#202833', sidewalks: false }),
-  ...createStraightRoad('road-garage-lot-strip', 'Garage Lot', { x: 2030, y: 1877 }, { x: 2330, y: 1877 }, { width: 74, color: '#2b2d34', sidewalks: false }),
+  ...createCurvedRoad('road-airport-entry', 'Airport Entry', [
+    { x: 1550, y: 5700 },
+    { x: 1550, y: 5900 },
+  ], districtRoad),
+  ...createCurvedRoad('road-clock-entry', 'Clock Tower Entry', [
+    { x: 7500, y: 5700 },
+    { x: 7500, y: 5850 },
+  ], districtRoad),
+  ...createCurvedRoad('road-garage-entry', 'Garage Entry', [
+    { x: 1500, y: 6800 },
+    { x: 1500, y: 6950 },
+  ], districtRoad),
+  ...createCurvedRoad('road-temple-entry', 'Rose Temple Entry', [
+    { x: 3900, y: 6800 },
+    { x: 3900, y: 6900 },
+  ], districtRoad),
+  ...createCurvedRoad('road-garden-entry', 'Garden Entry', [
+    { x: 6350, y: 6800 },
+    { x: 6350, y: 6900 },
+  ], districtRoad),
+  ...createCurvedRoad('road-doorway-entry', 'Doorway Entry', [
+    { x: 8900, y: 6800 },
+    { x: 8900, y: 6900 },
+  ], districtRoad),
+
+  ...createStraightRoad('road-airport-runway-strip', 'Airport Runway', { x: 750, y: 5895 }, { x: 2150, y: 5895 }, { width: 90, color: '#202833', sidewalks: false }),
+  ...createStraightRoad('road-garage-lot-strip', 'Garage Lot', { x: 1000, y: 7387 }, { x: 1300, y: 7387 }, { width: 74, color: '#2b2d34', sidewalks: false }),
 ];
 
 const intersections: WorldObject[] = [
-  ...createIntersection('intersection-boating', { x: 380, y: 560 }, ROAD_WIDTH * 1.35),
-  ...createIntersection('intersection-magic', { x: 1705, y: 560 }, ROAD_WIDTH * 1.35),
-  ...createIntersection('intersection-garage-north', { x: 2305, y: 560 }, ROAD_WIDTH * 1.35),
-  ...createIntersection('intersection-central-north', { x: 2475, y: 560 }, ROAD_WIDTH * 1.45),
-  ...createIntersection('intersection-party', { x: 3520, y: 560 }, ROAD_WIDTH * 1.35),
-  ...createIntersection('intersection-police', { x: 4750, y: 560 }, ROAD_WIDTH * 1.35),
-  ...createIntersection('intersection-airport', { x: 520, y: 3225 }, ROAD_WIDTH * 1.5),
-  ...createIntersection('intersection-player-house', { x: 2475, y: 1885 }, ROAD_WIDTH * 1.45),
-  ...createIntersection('intersection-left-player-house', { x: 520, y: 2260 }, ROAD_WIDTH * 1.35),
-  ...createIntersection('intersection-clock', { x: 2220, y: 4700 }, ROAD_WIDTH * 1.4),
-  ...createIntersection('intersection-temple', { x: 3150, y: 6100 }, ROAD_WIDTH * 1.35),
-  ...createIntersection('intersection-garden-route', { x: 4050, y: 7200 }, ROAD_WIDTH * 1.45),
-  ...createIntersection('intersection-doorway', { x: 4680, y: 8095 }, ROAD_WIDTH * 1.35),
-  ...createIntersection('intersection-mahal', { x: 3920, y: 1565 }, ROAD_WIDTH * 1.35),
-  ...createIntersection('intersection-pink-palace', { x: 4200, y: 3650 }, ROAD_WIDTH * 1.35),
-  ...createIntersection('intersection-desert-road', { x: 4300, y: 5550 }, ROAD_WIDTH * 1.45),
-  ...createIntersection('intersection-garden-mid', { x: 1900, y: 6600 }, ROAD_WIDTH * 1.35),
+  ...createIntersection('intersection-boating', { x: 1550, y: 1150 }, ROAD_WIDTH * 1.35),
+  ...createIntersection('intersection-magic', { x: 3900, y: 1150 }, ROAD_WIDTH * 1.35),
+  ...createIntersection('intersection-party', { x: 6400, y: 1150 }, ROAD_WIDTH * 1.35),
+  ...createIntersection('intersection-police', { x: 9000, y: 1150 }, ROAD_WIDTH * 1.35),
+  ...createIntersection('intersection-mahal', { x: 1850, y: 3300 }, ROAD_WIDTH * 1.4),
+  ...createIntersection('intersection-player-house', { x: 6050, y: 3500 }, ROAD_WIDTH * 1.45),
+  ...createIntersection('intersection-friends', { x: 8300, y: 3400 }, ROAD_WIDTH * 1.35),
+  ...createIntersection('intersection-pink-palace', { x: 10600, y: 3300 }, ROAD_WIDTH * 1.4),
+  ...createIntersection('intersection-airport', { x: 1550, y: 5700 }, ROAD_WIDTH * 1.5),
+  ...createIntersection('intersection-clock', { x: 7500, y: 5700 }, ROAD_WIDTH * 1.4),
+  ...createIntersection('intersection-desert', { x: 10450, y: 5700 }, ROAD_WIDTH * 1.45),
+  ...createIntersection('intersection-garage', { x: 1500, y: 6800 }, ROAD_WIDTH * 1.35),
+  ...createIntersection('intersection-temple', { x: 3900, y: 6800 }, ROAD_WIDTH * 1.35),
+  ...createIntersection('intersection-garden', { x: 6350, y: 6800 }, ROAD_WIDTH * 1.4),
+  ...createIntersection('intersection-doorway', { x: 8900, y: 6800 }, ROAD_WIDTH * 1.35),
 ];
 
 export const worldRoadObjects: WorldObject[] = [...mainRoads, ...intersections];
 
 export const worldRoadDecorations: RoadDecoration[] = [
-  createCrosswalk('crosswalk-boating', { x: 380, y: 560 }),
-  createCrosswalk('crosswalk-magic', { x: 1705, y: 560 }),
-  createCrosswalk('crosswalk-garage', { x: 2155, y: 1975 }, false),
-  createCrosswalk('crosswalk-party', { x: 3520, y: 560 }),
-  createCrosswalk('crosswalk-police', { x: 4750, y: 690 }, false),
-  createCrosswalk('crosswalk-player-house', { x: 520, y: 2260 }),
-  createCrosswalk('crosswalk-garden', { x: 4050, y: 7200 }, false),
-  createCrosswalk('crosswalk-doorway', { x: 4680, y: 8095 }, false),
-  createCrosswalk('crosswalk-mahal', { x: 3920, y: 1565 }, false),
-  createCrosswalk('crosswalk-pink-palace', { x: 4200, y: 3650 }),
-  createCrosswalk('crosswalk-airport', { x: 520, y: 3225 }),
-  createCrosswalk('crosswalk-clock', { x: 2220, y: 4700 }),
-  createCrosswalk('crosswalk-temple', { x: 3150, y: 6100 }),
-  createCrosswalk('crosswalk-desert', { x: 4300, y: 5550 }, false),
-  createStreetLamp('lamp-north-a', { x: 920, y: 492 }),
-  createStreetLamp('lamp-north-b', { x: 2180, y: 492 }),
-  createStreetLamp('lamp-north-c', { x: 3120, y: 492 }),
-  createStreetLamp('lamp-west-a', { x: 624, y: 1110 }),
-  createStreetLamp('lamp-west-b', { x: 624, y: 2270 }),
-  createStreetLamp('lamp-west-c', { x: 624, y: 4320 }),
-  createStreetLamp('lamp-west-d', { x: 624, y: 3000 }),
-  createStreetLamp('lamp-west-e', { x: 624, y: 3380 }),
-  createStreetLamp('lamp-central-a', { x: 2538, y: 1270 }),
-  createStreetLamp('lamp-central-b', { x: 2465, y: 2630 }),
-  createStreetLamp('lamp-central-d', { x: 3085, y: 5960 }),
-  createStreetLamp('lamp-palace-a', { x: 3984, y: 1980 }),
-  createStreetLamp('lamp-garden-route-a', { x: 3860, y: 7040 }),
-  createStreetLamp('lamp-garden-route-b', { x: 4310, y: 7550 }),
-  createStreetLamp('lamp-doorway-route-a', { x: 4540, y: 7950 }),
-  createStreetLamp('lamp-desert-a', { x: 4210, y: 5420 }),
-  createStreetLamp('lamp-desert-b', { x: 4680, y: 5680 }),
-  createRoadSign('sign-airport', { x: 760, y: 6985 }, 'AIRPORT'),
-  createRoadSign('sign-desert', { x: 4310, y: 5440 }, 'DESERT ZONE'),
-  createRoadSign('sign-party', { x: 3630, y: 470 }, 'NEON CLUB'),
-  createRoadSign('sign-police', { x: 4630, y: 756 }, 'POLICE'),
-  createRoadSign('sign-palace', { x: 4040, y: 1665 }, 'ROYAL ZONE'),
-  createRoadSign('sign-garden', { x: 3870, y: 7060 }, 'GARDEN DISTRICT'),
-  createRoadSign('sign-doorway', { x: 4550, y: 7960 }, 'DOORWAY'),
+  createCrosswalk('crosswalk-boating', { x: 1550, y: 1150 }),
+  createCrosswalk('crosswalk-magic', { x: 3900, y: 1150 }),
+  createCrosswalk('crosswalk-party', { x: 6400, y: 1150 }),
+  createCrosswalk('crosswalk-police', { x: 9000, y: 1150 }, false),
+  createCrosswalk('crosswalk-mahal', { x: 1850, y: 3300 }, false),
+  createCrosswalk('crosswalk-player-house', { x: 6050, y: 3500 }),
+  createCrosswalk('crosswalk-friends', { x: 8300, y: 3400 }, false),
+  createCrosswalk('crosswalk-pink-palace', { x: 10600, y: 3300 }),
+  createCrosswalk('crosswalk-airport', { x: 1550, y: 5700 }),
+  createCrosswalk('crosswalk-clock', { x: 7500, y: 5700 }),
+  createCrosswalk('crosswalk-desert', { x: 10450, y: 5700 }, false),
+  createCrosswalk('crosswalk-garage', { x: 1500, y: 6800 }, false),
+  createCrosswalk('crosswalk-temple', { x: 3900, y: 6800 }),
+  createCrosswalk('crosswalk-garden', { x: 6350, y: 6800 }, false),
+  createCrosswalk('crosswalk-doorway', { x: 8900, y: 6800 }, false),
+
+  createStreetLamp('lamp-north-a', { x: 2400, y: 1090 }),
+  createStreetLamp('lamp-north-b', { x: 5100, y: 1090 }),
+  createStreetLamp('lamp-north-c', { x: 7700, y: 1090 }),
+  createStreetLamp('lamp-west-a', { x: 1560, y: 1900 }),
+  createStreetLamp('lamp-west-b', { x: 1550, y: 4500 }),
+  createStreetLamp('lamp-west-c', { x: 1500, y: 6100 }),
+  createStreetLamp('lamp-central-a', { x: 2900, y: 3350 }),
+  createStreetLamp('lamp-central-b', { x: 5000, y: 3450 }),
+  createStreetLamp('lamp-central-c', { x: 7200, y: 3450 }),
+  createStreetLamp('lamp-central-d', { x: 9500, y: 3350 }),
+  createStreetLamp('lamp-east-a', { x: 9700, y: 2000 }),
+  createStreetLamp('lamp-east-b', { x: 10500, y: 4500 }),
+  createStreetLamp('lamp-airport-a', { x: 2800, y: 5820 }),
+  createStreetLamp('lamp-airport-b', { x: 5200, y: 5780 }),
+  createStreetLamp('lamp-south-a', { x: 2700, y: 6740 }),
+  createStreetLamp('lamp-south-b', { x: 5100, y: 6740 }),
+  createStreetLamp('lamp-south-c', { x: 7600, y: 6740 }),
+  createStreetLamp('lamp-desert-a', { x: 10480, y: 4900 }),
+  createStreetLamp('lamp-desert-b', { x: 9700, y: 6600 }),
+
+  createRoadSign('sign-boating', { x: 1650, y: 1250 }, 'BOATING DOCK'),
+  createRoadSign('sign-airport', { x: 1650, y: 5900 }, 'AIRPORT'),
+  createRoadSign('sign-desert', { x: 9700, y: 7250 }, 'DESERT ZONE'),
+  createRoadSign('sign-party', { x: 6500, y: 1250 }, 'NEON CLUB'),
+  createRoadSign('sign-police', { x: 9100, y: 1250 }, 'POLICE'),
+  createRoadSign('sign-palace', { x: 10500, y: 3150 }, 'ROYAL ZONE'),
+  createRoadSign('sign-garden', { x: 6450, y: 6900 }, 'GARDEN DISTRICT'),
+  createRoadSign('sign-doorway', { x: 9000, y: 6900 }, 'DOORWAY'),
 ];

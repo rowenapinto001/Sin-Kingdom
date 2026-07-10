@@ -130,7 +130,7 @@ export default function GameScreen() {
   return (
     <View style={styles.appRoot}>
       <View style={[styles.root, { width: stageWidth }]} onLayout={handleLayout}>
-        {Platform.OS !== 'web' ? (
+        {Platform.OS === 'ios' ? (
           <TextInput
             autoFocus
             caretHidden

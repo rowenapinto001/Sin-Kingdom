@@ -1144,11 +1144,14 @@ function HomeScreen({
         </Text>
       </View>
       <View pointerEvents="none" style={screenStyles.menuRankLabelPatch}>
+        <Text style={screenStyles.menuRankSectionTitle} numberOfLines={1} allowFontScaling={false}>RANK</Text>
         <Text style={screenStyles.menuRankLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>{rankLabel}</Text>
+        <Text style={screenStyles.menuRankStats} numberOfLines={1} allowFontScaling={false}>---</Text>
+        <Text style={screenStyles.menuRankStats} numberOfLines={1} allowFontScaling={false}>--- / ---</Text>
       </View>
       <View pointerEvents="none" style={screenStyles.menuLegacyMapsCover} />
       <View pointerEvents="none" style={screenStyles.menuRewardPanel}>
-        <Text style={screenStyles.menuRewardTitle}>MAPS</Text>
+        <Text style={screenStyles.menuRewardTitle}>NEXT REWARD</Text>
         <View style={screenStyles.menuRewardGrid}>
           {homeRewardNames.map((name, index) => (
             <View key={name} style={screenStyles.menuRewardCard}>
@@ -2251,17 +2254,32 @@ const screenStyles = StyleSheet.create({
     left: '13.0%',
     top: '60.8%',
     width: '13.0%',
-    height: '7.0%',
+    height: '11.0%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#080509',
+    gap: 1,
+  },
+  menuRankSectionTitle: {
+    color: '#ff8fd6',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+    includeFontPadding: false,
   },
   menuRankLabel: {
     color: colors.text,
-    fontSize: 25,
+    fontSize: 20,
     fontWeight: '900',
     letterSpacing: 0,
     textAlign: 'center',
+    includeFontPadding: false,
+  },
+  menuRankStats: {
+    color: colors.text,
+    opacity: 0.7,
+    fontSize: 10,
+    fontWeight: '700',
     includeFontPadding: false,
   },
   menuLegacyMapsCover: {

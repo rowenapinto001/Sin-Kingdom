@@ -39,6 +39,7 @@ export default function AirplaneFlight({ destinationId, worldLocations, onLand, 
   });
   const frameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
+  const [parachuteStage, setParachuteStage] = useState<'freefall' | 'canopyOpen' | 'glide' | 'landing' | null>(null);
 
   const selectedDestination = airportDestinations.find((destination) => destination.id === destinationId) ?? airportDestinations[0];
   const routeProgress = Math.min(MAX_ROUTE_PROGRESS, Math.max(0, plane.progress));
@@ -105,7 +106,11 @@ export default function AirplaneFlight({ destinationId, worldLocations, onLand, 
       altitude: Math.max(current.altitude, 78),
       progress: Math.max(current.progress, 94),
     }));
-    setTimeout(() => onLand(selectedDestination.id), 1350);
+    setParachuteStage('freefall');
+    setTimeout(() => setParachuteStage('canopyOpen'), 650);
+    setTimeout(() => setParachuteStage('glide'), 1350);
+    setTimeout(() => setParachuteStage('landing'), 2300);
+    setTimeout(() => onLand(selectedDestination.id), 2950);
   };
 
   return (
@@ -159,14 +164,14 @@ export default function AirplaneFlight({ destinationId, worldLocations, onLand, 
           <View style={styles.headrest} />
           <View style={styles.seatBase} />
           <SpriteCharacter characterId="victorKane" direction="down" isMoving={false} currentAction="idle" scale={1.04} />
-          <Text style={styles.seatName}>BOSS</Text>
+          <Text style={styles.seatName}>BOSS · PASSENGER</Text>
         </View>
 
         <View style={styles.pilotSeatRight}>
           <View style={styles.headrest} />
           <View style={styles.seatBase} />
           <SpriteCharacter characterId="lunaCrown" direction="down" isMoving={plane.speed > 0} currentAction="idle" scale={1.12} />
-          <Text style={styles.seatName}>LUNA PILOTING</Text>
+          <Text style={styles.seatName}>LUNA CROWN · BODYGUARD PILOT</Text>
         </View>
 
         <View style={[styles.instrumentDeck, { transform: [{ scale: cockpitScale }] }]}>
@@ -247,16 +252,32 @@ export default function AirplaneFlight({ destinationId, worldLocations, onLand, 
         </View>
       ) : null}
 
-      {plane.parachuting ? (
+      {plane.parachuting && parachuteStage ? (
         <View style={styles.parachuteOverlay}>
-          <View style={styles.parachuteCanopy}>
-            <View style={styles.canopyPanel} />
-            <View style={styles.canopyPanelAlt} />
-            <View style={styles.canopyPanel} />
-          </View>
-          <View style={styles.parachuteLines} />
-          <SpriteCharacter characterId="lunaCrown" direction="down" isMoving={false} currentAction="idle" scale={1.12} />
-          <Text style={styles.parachuteText}>PARACHUTE LANDING TO {selectedDestination.shortName}</Text>
+          <Text style={styles.parachuteStageLabel}>
+            {parachuteStage === 'freefall' && '1. JUMP — FREEFALL'}
+            {parachuteStage === 'canopyOpen' && '2. PARACHUTE OPEN'}
+            {parachuteStage === 'glide' && '3. GLIDE'}
+            {parachuteStage === 'landing' && '4. LANDING APPROACH'}
+          </Text>
+          {parachuteStage !== 'freefall' ? (
+            <View style={styles.parachuteCanopy}>
+              <View style={styles.canopyPanel} />
+              <View style={styles.canopyPanelAlt} />
+              <View style={styles.canopyPanel} />
+            </View>
+          ) : null}
+          {parachuteStage !== 'freefall' ? <View style={styles.parachuteLines} /> : null}
+          <SpriteCharacter
+            characterId="lunaCrown"
+            direction="down"
+            isMoving={parachuteStage === 'glide'}
+            currentAction={parachuteStage === 'freefall' ? 'walk' : 'idle'}
+            scale={parachuteStage === 'landing' ? 1.3 : 1.12}
+          />
+          <Text style={styles.parachuteText}>
+            {parachuteStage === 'landing' ? `LANDING AT ${selectedDestination.shortName}` : `PARACHUTE TO ${selectedDestination.shortName}`}
+          </Text>
         </View>
       ) : null}
 
@@ -871,6 +892,15 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textShadowColor: '#ff2e8a',
     textShadowRadius: 8,
+  },
+  parachuteStageLabel: {
+    marginBottom: 6,
+    color: '#ffbd28',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textShadowColor: '#000',
+    textShadowRadius: 4,
   },
   closeButton: {
     position: 'absolute',

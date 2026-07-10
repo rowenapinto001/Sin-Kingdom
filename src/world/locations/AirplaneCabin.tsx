@@ -29,16 +29,23 @@ export default function AirplaneCabin({ destination, onStartFlight, onBack }: Ai
           <View style={styles.seat}>
             <SpriteCharacter characterId="lunaCrown" direction="down" isMoving={false} currentAction="idle" scale={1.55} />
             <Text style={styles.seatText}>Luna Crown</Text>
+            <Text style={styles.seatRoleText}>PILOT</Text>
           </View>
           <View style={styles.seat}>
             <SpriteCharacter characterId="victorKane" direction="down" isMoving={false} currentAction="idle" scale={1.42} />
             <Text style={styles.seatText}>Boss</Text>
+            <Text style={styles.seatRoleText}>PASSENGER</Text>
+          </View>
+          <View style={styles.seat}>
+            <SpriteCharacter characterId="friend" direction="down" isMoving={false} currentAction="idle" scale={1.42} />
+            <Text style={styles.seatText}>Arion Vale</Text>
+            <Text style={styles.seatRoleText}>PASSENGER</Text>
           </View>
           <View style={styles.flightPlan}>
             <Text style={styles.flightPlanTitle}>FLIGHT PLAN</Text>
             <Text style={styles.flightPlanText}>Destination: {destination.name}</Text>
-            <Text style={styles.flightPlanText}>Passengers checked. Cabin sealed. Parachutes ready.</Text>
-            <Text style={styles.flightPlanHint}>Press START FLIGHT to open the full aeroplane control system.</Text>
+            <Text style={styles.flightPlanText}>All passengers boarded. Cabin sealed. Parachutes ready.</Text>
+            <Text style={styles.flightPlanHint}>Luna Crown has flight controls. Press START FLIGHT to open the aeroplane control system.</Text>
           </View>
         </View>
       </View>
@@ -139,10 +146,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   seatText: {
-    paddingBottom: 8,
+    paddingBottom: 2,
     color: '#fff',
     fontSize: 11,
     fontWeight: '900',
+  },
+  seatRoleText: {
+    paddingBottom: 8,
+    color: '#8ee8ff',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
   flightPlan: {
     flex: 1,

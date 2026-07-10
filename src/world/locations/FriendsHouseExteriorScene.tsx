@@ -13,6 +13,7 @@ import {
   friendsHouseExteriorScene,
   friendsHouseExteriorWalkZones,
 } from '../../data/friendsHouseExteriorSceneConfig';
+import { friendsHouseDialogue } from '../../data/dialogues/friendsHouseDialogue';
 import { gameSettings } from '../../data/gameSettings';
 import { Direction } from '../../game/types';
 import { useIndianTimeAtmosphere } from '../../hooks/useIndianTimeAtmosphere';
@@ -34,7 +35,7 @@ type FriendsHouseExteriorSceneProps = {
 const backgroundImage = require('../../../assets/locations/friends_house/friends_house_front.png');
 const PLAYER_WIDTH = 62;
 const PLAYER_HEIGHT = 94;
-const SPEED = 210;
+const SPEED = 500;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -83,6 +84,7 @@ export default function FriendsHouseExteriorScene({ onEnterHouse, onExitWorld }:
   const scaleX = width / friendsHouseExteriorScene.width;
   const scaleY = height / friendsHouseExteriorScene.height;
   const [touchDirections, setTouchDirections] = useState<Direction[]>([]);
+  const touchDirectionsRef = useRef<Direction[]>([]);
   const activeDirectionsRef = useRef<Direction[]>([]);
   const frameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
@@ -156,20 +158,30 @@ export default function FriendsHouseExteriorScene({ onEnterHouse, onExitWorld }:
   }, []);
 
   useEffect(() => {
-    if (dialog !== null) setTouchDirections([]);
+    if (dialog !== null) {
+      touchDirectionsRef.current = [];
+      activeDirectionsRef.current = [];
+      setTouchDirections([]);
+    }
   }, [dialog]);
 
   const pressDirection = (direction: Direction) => {
-    setTouchDirections((current) => (current.includes(direction) ? current : [...current, direction]));
+    const next = touchDirectionsRef.current.includes(direction) ? touchDirectionsRef.current : [...touchDirectionsRef.current, direction];
+    touchDirectionsRef.current = next;
+    activeDirectionsRef.current = mergeDirectionInputs(next, keyboardControls.activeDirections);
+    setTouchDirections(next);
   };
 
   const releaseDirection = (direction: Direction) => {
-    setTouchDirections((current) => current.filter((item) => item !== direction));
+    const next = touchDirectionsRef.current.filter((item) => item !== direction);
+    touchDirectionsRef.current = next;
+    activeDirectionsRef.current = mergeDirectionInputs(next, keyboardControls.activeDirections);
+    setTouchDirections(next);
   };
 
   const interact = () => {
     if (!zone) return;
-    if (zone.id === 'enterHouse' || zone.id === 'talkArion') {
+    if (zone.id === 'enterHouse') {
       onEnterHouse();
       return;
     }
@@ -180,7 +192,7 @@ export default function FriendsHouseExteriorScene({ onEnterHouse, onExitWorld }:
 
   return (
     <View style={styles.root}>
-      {Platform.OS !== 'web' ? (
+      {Platform.OS === 'ios' ? (
         <TextInput
           autoFocus
           caretHidden
@@ -200,7 +212,7 @@ export default function FriendsHouseExteriorScene({ onEnterHouse, onExitWorld }:
             height={item.height * scaleY}
             label={item.label}
             active={zone?.id === item.id}
-            onPress={item.id === 'enterHouse' || item.id === 'talkArion' ? onEnterHouse : () => setDialog(item.id)}
+            onPress={item.id === 'enterHouse' ? onEnterHouse : () => setDialog(item.id)}
           />
         ))}
         <View style={[styles.actor, scenePoint(friendsHouseExteriorScene.arionSpawn.x, friendsHouseExteriorScene.arionSpawn.y)]}>
@@ -251,10 +263,20 @@ export default function FriendsHouseExteriorScene({ onEnterHouse, onExitWorld }:
       <DPad activeDirections={activeDirections} onDirectionPressIn={pressDirection} onDirectionPressOut={releaseDirection} />
 
       {dialog === 'talkArion' ? (
-        <DialogBox title="Arion Vale" text="Hey! You made it. Come in, the boss is inside." onClose={() => setDialog(null)} />
+        <DialogBox
+          title="Arion Vale"
+          text={friendsHouseDialogue.arionGreeting}
+          portraitCharacterId="friend"
+          onClose={() => setDialog(null)}
+        />
       ) : null}
       {dialog === 'talkBoss' ? (
-        <DialogBox title="Boss" text="The meeting is inside. Let's go." onClose={() => setDialog(null)} />
+        <DialogBox
+          title="Boss"
+          text={friendsHouseDialogue.bossGateLine}
+          portraitCharacterId="victorKane"
+          onClose={() => setDialog(null)}
+        />
       ) : null}
     </View>
   );

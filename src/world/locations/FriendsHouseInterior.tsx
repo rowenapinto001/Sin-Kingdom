@@ -3,6 +3,7 @@ import { ImageBackground, Platform, Pressable, StyleSheet, Text, TextInput, useW
 import DialogBox from '../../components/DialogBox';
 import DPad from '../../components/DPad';
 import InteractZone from '../../components/InteractZone';
+import MissionUnlockPopup from '../../components/MissionUnlockPopup';
 import SpriteCharacter from '../../components/SpriteCharacter';
 import { friendsHouseCollisionBoxes, friendsHouseInteractZones, friendsHouseInterior, friendsHouseRooms } from '../../data/friendsHouseConfig';
 import { friendsHouseDialogue } from '../../data/dialogues/friendsHouseDialogue';
@@ -59,6 +60,26 @@ function isBlocked(rect: Rect) {
 function nearbyZone(actor: Actor) {
   const actorRect = { x: actor.x - 18, y: actor.y - 18, width: PLAYER_SIZE + 36, height: PLAYER_SIZE + 36 };
   return friendsHouseInteractZones.find((zone) => rectsOverlap(actorRect, zone));
+}
+
+function RoomLayer() {
+  return (
+    <>
+      {friendsHouseRooms.map((room) => (
+        <View
+          key={room.id}
+          style={[
+            styles.roomFloor,
+            { left: room.x, top: room.y, width: room.width, height: room.height, backgroundColor: room.floor },
+          ]}
+        >
+          <View style={styles.roomNameTag}>
+            <Text style={styles.roomNameText}>{room.name.toUpperCase()}</Text>
+          </View>
+        </View>
+      ))}
+    </>
+  );
 }
 
 function Furniture() {
@@ -207,7 +228,7 @@ export default function FriendsHouseInterior({ onExit, onMissionStart }: Friends
 
   return (
     <View style={styles.root}>
-      {Platform.OS !== 'web' ? (
+      {Platform.OS === 'ios' ? (
         <TextInput
           autoFocus
           caretHidden
@@ -219,20 +240,10 @@ export default function FriendsHouseInterior({ onExit, onMissionStart }: Friends
       ) : null}
       <ImageBackground source={interiorBackdrop} resizeMode="cover" style={styles.backdrop} imageStyle={styles.backdropImage}>
         <View style={styles.backdropShade} />
-        <View style={styles.storyChoicePanel}>
-          <View style={styles.choiceRowActive}>
-            <Text style={styles.choiceArrow}>▶</Text>
-            <Text style={styles.choiceText}>I'm ready.</Text>
-          </View>
-          <View style={styles.choiceRow}>
-            <Text style={styles.choiceText}>Tell me more about the task.</Text>
-          </View>
-          <View style={styles.choiceRow}>
-            <Text style={styles.choiceText}>Not right now.</Text>
-          </View>
-        </View>
       </ImageBackground>
       <View style={[styles.house, { transform: [{ translateX: cameraX }, { translateY: cameraY }] }]}>
+        <RoomLayer />
+        <Furniture />
         <View style={styles.livingRoomStage}>
           <View style={styles.stageGlow} />
           <View style={styles.stageSofaLeft} />
@@ -248,7 +259,7 @@ export default function FriendsHouseInterior({ onExit, onMissionStart }: Friends
             height={item.height}
             label={item.label}
             active={zone?.id === item.id}
-            onPress={() => setDialog(item.id === 'exit' ? null : item.id)}
+            onPress={() => (item.id === 'exit' ? onExit() : setDialog(item.id))}
           />
         ))}
         <View style={[styles.actor, { transform: [{ translateX: friendsHouseInterior.arionSpot.x }, { translateY: friendsHouseInterior.arionSpot.y }] }]}>
@@ -280,12 +291,13 @@ export default function FriendsHouseInterior({ onExit, onMissionStart }: Friends
       <DPad activeDirections={activeDirections} onDirectionPressIn={pressDirection} onDirectionPressOut={releaseDirection} />
 
       {dialog === 'arion' ? (
-        <DialogBox title="Arion Vale" text={friendsHouseDialogue.arionGreeting} onClose={() => setDialog(null)} />
+        <DialogBox title="Arion Vale" text={friendsHouseDialogue.arionGreeting} portraitCharacterId="friend" onClose={() => setDialog(null)} />
       ) : null}
       {dialog === 'boss' ? (
         <DialogBox
           title="Boss Meeting"
           text={friendsHouseDialogue.bossIntro}
+          portraitCharacterId="victorKane"
           choices={[
             { label: "I'm ready.", onPress: unlockMission },
             { label: 'Tell me more.', onPress: () => setDialog('bossDetails') },
@@ -294,13 +306,20 @@ export default function FriendsHouseInterior({ onExit, onMissionStart }: Friends
         />
       ) : null}
       {dialog === 'bossDetails' ? (
-        <DialogBox title="Private Matter" text={friendsHouseDialogue.bossDetails} choices={[{ label: "I'm ready.", onPress: unlockMission }]} onClose={() => setDialog(null)} />
+        <DialogBox
+          title="Private Matter"
+          text={friendsHouseDialogue.bossDetails}
+          portraitCharacterId="victorKane"
+          choices={[{ label: "I'm ready.", onPress: unlockMission }]}
+          onClose={() => setDialog(null)}
+        />
       ) : null}
       {dialog === 'missionUnlocked' ? (
-        <DialogBox
-          title={friendsHouseDialogue.missionUnlocked}
-          text={`${friendsHouseDialogue.missionTitle}\n${friendsHouseDialogue.reward}`}
-          choices={[{ label: 'Start Mission', onPress: onMissionStart }]}
+        <MissionUnlockPopup
+          missionTitle={friendsHouseDialogue.missionTitle}
+          xp={friendsHouseDialogue.rewardXp}
+          cash={friendsHouseDialogue.rewardCash}
+          onStart={onMissionStart}
           onClose={() => setDialog(null)}
         />
       ) : null}
@@ -343,42 +362,30 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(5, 3, 8, 0.34)',
   },
-  storyChoicePanel: {
+  roomFloor: {
     position: 'absolute',
-    left: '43%',
-    top: '34%',
-    width: '35%',
-    gap: 8,
-  },
-  choiceRowActive: {
-    minHeight: 38,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    flexDirection: 'row',
     borderWidth: 2,
-    borderColor: 'rgba(255, 195, 52, 0.9)',
-    backgroundColor: 'rgba(10, 8, 13, 0.86)',
+    borderColor: 'rgba(168, 146, 105, 0.55)',
+    borderRadius: 8,
+    opacity: 0.88,
   },
-  choiceRow: {
-    minHeight: 36,
-    paddingHorizontal: 18,
-    justifyContent: 'center',
+  roomNameTag: {
+    alignSelf: 'center',
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: 'rgba(5, 3, 8, 0.72)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 195, 52, 0.52)',
-    backgroundColor: 'rgba(10, 8, 13, 0.72)',
+    borderColor: 'rgba(255,255,255,0.25)',
   },
-  choiceArrow: {
-    marginRight: 8,
-    color: '#ffbf3f',
-    fontSize: 16,
+  roomNameText: {
+    color: '#fff',
+    fontSize: 11,
     fontWeight: '900',
-  },
-  choiceText: {
-    color: '#f6e8c8',
-    fontSize: 15,
-    fontWeight: '900',
+    letterSpacing: 1,
     textShadowColor: '#000',
-    textShadowRadius: 4,
+    textShadowRadius: 3,
   },
   livingRoomStage: {
     position: 'absolute',

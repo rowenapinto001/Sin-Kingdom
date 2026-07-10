@@ -32,7 +32,7 @@ export const characterConfigs = {
     role: 'player',
     source: require('../../assets/player/player.png'),
     sheet: smallSpriteSheet,
-    speed: 120,
+    speed: 260,
     animationSpeedMs: 120,
     scale: 2.25,
     animations: smallSpriteAnimations,

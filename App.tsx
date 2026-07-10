@@ -1105,8 +1105,8 @@ function HomeScreen({
   const isLandscape = windowWidth >= windowHeight;
   const landscapeWidth = Math.max(windowWidth, windowHeight);
   const landscapeHeight = Math.min(windowWidth, windowHeight);
-  const stageWidth = Math.min(landscapeWidth, landscapeHeight * menuHomeAspectRatio);
-  const stageHeight = stageWidth / menuHomeAspectRatio;
+  const stageWidth = landscapeWidth;
+  const stageHeight = landscapeHeight;
   const playerName = profile.playerName || bodyguardName;
   const rankNumber = profile.leaderboardScore <= 0 ? 0 : profile.rankNumber;
   const rankLabel = profile.leaderboardScore <= 0 ? '---' : rankClassForRank(profile.rankNumber).toUpperCase();

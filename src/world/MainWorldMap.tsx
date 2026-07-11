@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Animated, DeviceEventEmitter, Easing, NativeEventEmitter, NativeModules, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Bridge from '../components/Bridge';
 import BoatControls from '../components/BoatControls';
 import BoatVehicle from '../components/BoatVehicle';
@@ -76,6 +76,13 @@ type MainWorldMapProps = {
 type ShipSide = 'west' | 'east' | 'bridge';
 
 // Boating Dock sits at (900,700,1300,900); the sea corridor runs south from
+type AndroidHardwareKeyEvent = {
+  type?: 'keydown' | 'keyup';
+  key?: string;
+};
+
+const ANDROID_HARDWARE_KEY_EVENT = 'SinKingdomHardwareKey';
+const hardwareKeyboardModule = NativeModules.SinKingdomHardwareKeyboard;
 // there along the west vertical road down toward Rani-Raj Mahal and the
 // Airport, crossed by the Friends Canal Bridge near y=3300.
 const SHIP_DOCK_ZONES: Array<Rect & { side: ShipSide }> = [
@@ -87,6 +94,11 @@ const BOAT_WORLD_WIDTH = 102;
 const BOAT_WORLD_HEIGHT = 54;
 const BOAT_WATER_LANES: Rect[] = [
   { x: 750, y: 700, width: 900, height: 5300 },
+const WALK_SPEED_MULTIPLIER = 1.35;
+const BOAT_STEER_SPEED = 210;
+const BOAT_ACCELERATION = 360;
+const BOAT_MAX_FORWARD_SPEED = 310;
+const BOAT_MAX_REVERSE_SPEED = -120;
   { x: 900, y: 700, width: 1100, height: 850 },
 ];
 const BOAT_BLOCKERS: Rect[] = [
@@ -174,6 +186,29 @@ function movementVector(activeDirections: Direction[]) {
 
 function nearestLocation(actor: WorldActor) {
   const actorCenter = { x: actor.x + PLAYER_WORLD_SIZE / 2, y: actor.y + PLAYER_WORLD_SIZE / 2 };
+function directionFromHardwareKey(key?: string): Direction | undefined {
+  switch ((key ?? '').trim().toLowerCase()) {
+    case 'arrowup':
+    case 'up':
+    case 'w':
+      return 'up';
+    case 'arrowdown':
+    case 'down':
+    case 's':
+      return 'down';
+    case 'arrowleft':
+    case 'left':
+    case 'a':
+      return 'left';
+    case 'arrowright':
+    case 'right':
+    case 'd':
+      return 'right';
+    default:
+      return undefined;
+  }
+}
+
   const locationConfig = allLocationConfigs.find((location) =>
     rectsOverlap({ x: actorCenter.x - 4, y: actorCenter.y - 4, width: 8, height: 8 }, location.interactionZone),
   );
@@ -510,6 +545,8 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const touchDirectionsRef = useRef<Direction[]>([]);
   const activeDirectionsRef = useRef<Direction[]>([]);
   const [isFlying, setIsFlying] = useState(false);
+  const [hardwareDirections, setHardwareDirections] = useState<Direction[]>([]);
+  const hardwareDirectionsRef = useRef<Direction[]>([]);
   const [playerMode, setPlayerMode] = useState<PlayerMode>('walking');
   const playerModeRef = useRef<PlayerMode>('walking');
   const [boat, setBoat] = useState<BoatState>(() => boatSpawnForDock('west'));
@@ -556,14 +593,16 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
     disabled: Boolean(insideLocation) || isFlying,
   });
   const activeDirections = useMemo(
-    () => mergeDirectionInputs(touchDirections, keyboardControls.activeDirections),
-    [keyboardControls.activeDirections, touchDirections],
+    () => mergeDirectionInputs(touchDirections, hardwareDirections, keyboardControls.activeDirections),
+    [hardwareDirections, keyboardControls.activeDirections, touchDirections],
   );
   const clearMovementInput = useCallback(() => {
     touchDirectionsRef.current = [];
     setTouchDirections([]);
     keyboardControls.resetKeyboardControls();
+    hardwareDirectionsRef.current = [];
     activeDirectionsRef.current = [];
+    setHardwareDirections([]);
   }, [keyboardControls.resetKeyboardControls]);
 
   const nearbyLocation = useMemo(() => nearestLocation(player), [player]);
@@ -613,6 +652,39 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
 
   useEffect(() => {
     playerActionRef.current = playerAction;
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !gameSettings.keyboardControlsEnabled || Boolean(insideLocation) || isFlying) return undefined;
+
+    const updateHardwareDirection = (event: AndroidHardwareKeyEvent) => {
+      const direction = directionFromHardwareKey(event.key);
+      if (!direction) return;
+
+      const isPressed = event.type === 'keydown';
+      const current = hardwareDirectionsRef.current;
+      const next = isPressed
+        ? current.includes(direction)
+          ? current
+          : [...current, direction]
+        : current.filter((item) => item !== direction);
+
+      if (next === current) return;
+      hardwareDirectionsRef.current = next;
+      activeDirectionsRef.current = mergeDirectionInputs(touchDirectionsRef.current, next, keyboardControls.activeDirections);
+      setHardwareDirections(next);
+    };
+
+    const deviceSubscription = DeviceEventEmitter.addListener(ANDROID_HARDWARE_KEY_EVENT, updateHardwareDirection);
+    const nativeEmitter = hardwareKeyboardModule ? new NativeEventEmitter(hardwareKeyboardModule) : null;
+    const nativeSubscription = nativeEmitter?.addListener(ANDROID_HARDWARE_KEY_EVENT, updateHardwareDirection);
+
+    return () => {
+      deviceSubscription.remove();
+      nativeSubscription?.remove();
+      hardwareDirectionsRef.current = [];
+      setHardwareDirections([]);
+    };
+  }, [insideLocation, isFlying, keyboardControls.activeDirections]);
+
   }, [playerAction]);
 
   useEffect(() => {
@@ -630,9 +702,9 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         const directions = activeDirectionsRef.current;
         const steering = (directions.includes('left') ? -1 : 0) + (directions.includes('right') ? 1 : 0);
         const throttle = directions.includes('up') ? 1 : directions.includes('down') ? -0.7 : 0;
-        const heading = (currentBoat.heading + steering * 140 * deltaSeconds + 360) % 360;
-        const rawSpeed = currentBoat.speed + throttle * 220 * deltaSeconds - Math.sign(currentBoat.speed) * 18 * deltaSeconds;
-        const speed = Math.abs(rawSpeed) < 1 ? 0 : clamp(rawSpeed, -80, 220);
+        const heading = (currentBoat.heading + steering * BOAT_STEER_SPEED * deltaSeconds + 360) % 360;
+        const rawSpeed = currentBoat.speed + throttle * BOAT_ACCELERATION * deltaSeconds - Math.sign(currentBoat.speed) * 24 * deltaSeconds;
+        const speed = Math.abs(rawSpeed) < 1 ? 0 : clamp(rawSpeed, BOAT_MAX_REVERSE_SPEED, BOAT_MAX_FORWARD_SPEED);
         const radians = (heading * Math.PI) / 180;
         const candidate = {
           x: currentBoat.x + Math.cos(radians) * speed * deltaSeconds,
@@ -687,7 +759,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
       const vector = movementVector(activeDirectionsRef.current);
       const isMoving = vector.dx !== 0 || vector.dy !== 0;
       const direction = directionFromVector(vector.dx, vector.dy, current.direction);
-      const movementSpeed = PLAYER_WORLD_SPEED * (isRunning ? 1.55 : 1);
+      const movementSpeed = PLAYER_WORLD_SPEED * WALK_SPEED_MULTIPLIER * (isRunning ? 1.65 : 1);
       const candidate = {
         x: current.x + vector.dx * movementSpeed * deltaSeconds,
         y: current.y + vector.dy * movementSpeed * deltaSeconds,
@@ -1004,7 +1076,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
 
   return (
     <View style={styles.root}>
-      {Platform.OS === 'ios' ? (
+      {Platform.OS !== 'web' ? (
         <TextInput
           autoFocus
           caretHidden
@@ -1022,6 +1094,8 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
             key={object.id}
             style={[
               styles.worldObject,
+          blurOnSubmit={false}
+          autoCorrect={false}
               {
                 left: object.x,
                 top: object.y,

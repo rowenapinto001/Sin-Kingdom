@@ -44,6 +44,18 @@ class MainActivity : ReactActivity() {
     return true
   }
 
+  override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+    val keyName = movementKeyName(keyCode) ?: return super.onKeyDown(keyCode, event)
+    HardwareKeyboardModule.emitKeyEvent("keydown", keyName, event.repeatCount)
+    return true
+  }
+
+  override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+    val keyName = movementKeyName(keyCode) ?: return super.onKeyUp(keyCode, event)
+    HardwareKeyboardModule.emitKeyEvent("keyup", keyName, event.repeatCount)
+    return true
+  }
+
   private fun movementKeyName(keyCode: Int): String? {
     return when (keyCode) {
       KeyEvent.KEYCODE_W,

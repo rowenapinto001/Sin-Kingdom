@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef } from 'react';
 import { Direction } from '../game/types';
 
 type DPadProps = {
@@ -9,6 +10,7 @@ type DPadProps = {
 };
 
 export default function DPad({ activeDirections, onDirectionPressIn, onDirectionPressOut, mode = 'walking' }: DPadProps) {
+  const responderDirectionRef = useRef<Direction | null>(null);
   const buttons: Array<{ direction: Direction; label: string; style: object }> = [
     { direction: 'up', label: mode === 'boat' ? 'FRONT' : 'UP', style: styles.up },
     { direction: 'left', label: 'LEFT', style: styles.left },
@@ -16,8 +18,39 @@ export default function DPad({ activeDirections, onDirectionPressIn, onDirection
     { direction: 'down', label: mode === 'boat' ? 'BACK' : 'DOWN', style: styles.down },
   ];
 
+  const directionFromTouch = (event: GestureResponderEvent): Direction | null => {
+    const { locationX, locationY } = event.nativeEvent;
+    const dx = locationX - DPAD_CENTER;
+    const dy = locationY - DPAD_CENTER;
+    if (Math.hypot(dx, dy) < 16) return null;
+    return Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
+  };
+
+  const updateResponderDirection = (event: GestureResponderEvent) => {
+    const nextDirection = directionFromTouch(event);
+    const currentDirection = responderDirectionRef.current;
+    if (nextDirection === currentDirection) return;
+    if (currentDirection) onDirectionPressOut(currentDirection);
+    responderDirectionRef.current = nextDirection;
+    if (nextDirection) onDirectionPressIn(nextDirection);
+  };
+
+  const releaseResponderDirection = () => {
+    const currentDirection = responderDirectionRef.current;
+    responderDirectionRef.current = null;
+    if (currentDirection) onDirectionPressOut(currentDirection);
+  };
+
   return (
-    <View style={styles.root}>
+    <View
+      style={styles.root}
+      onStartShouldSetResponder={() => true}
+      onMoveShouldSetResponder={() => true}
+      onResponderGrant={updateResponderDirection}
+      onResponderMove={updateResponderDirection}
+      onResponderRelease={releaseResponderDirection}
+      onResponderTerminate={releaseResponderDirection}
+    >
       {buttons.map((button) => {
         const active = activeDirections.includes(button.direction);
         return (
@@ -95,3 +128,5 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.22)',
   },
 });
+
+const DPAD_CENTER = 87;

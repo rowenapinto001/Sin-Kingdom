@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DeviceEventEmitter, Platform } from 'react-native';
+import { DeviceEventEmitter, NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import { Direction } from '../game/types';
 
 type NativeKeyPressEvent = {
@@ -59,6 +59,7 @@ export type KeyboardControls = {
 
 const DIRECTION_ORDER: Direction[] = ['up', 'down', 'left', 'right'];
 const ANDROID_HARDWARE_KEY_EVENT = 'SinKingdomHardwareKey';
+const hardwareKeyboardModule = NativeModules.SinKingdomHardwareKeyboard;
 
 function normalizeKeyId(key: string) {
   return key.trim().toLowerCase();
@@ -263,7 +264,7 @@ export function useKeyboardControls({
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
 
-    const subscription = DeviceEventEmitter.addListener(ANDROID_HARDWARE_KEY_EVENT, (event: AndroidHardwareKeyEvent) => {
+    const handleHardwareKey = (event: AndroidHardwareKeyEvent) => {
       if (!controlsEnabled) return;
 
       const keyId = normalizeKeyId(event.key ?? '');
@@ -275,10 +276,15 @@ export function useKeyboardControls({
       } else if (event.type === 'keyup') {
         releaseNativeDirection(nextDirection);
       }
-    });
+    };
+
+    const deviceSubscription = DeviceEventEmitter.addListener(ANDROID_HARDWARE_KEY_EVENT, handleHardwareKey);
+    const nativeEmitter = hardwareKeyboardModule ? new NativeEventEmitter(hardwareKeyboardModule) : null;
+    const nativeSubscription = nativeEmitter?.addListener(ANDROID_HARDWARE_KEY_EVENT, handleHardwareKey);
 
     return () => {
-      subscription.remove();
+      deviceSubscription.remove();
+      nativeSubscription?.remove();
     };
   }, [controlsEnabled, holdNativeDirection, releaseNativeDirection]);
 

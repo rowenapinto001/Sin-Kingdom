@@ -92,13 +92,13 @@ const SHIP_DOCK_ZONES: Array<Rect & { side: ShipSide }> = [
 ];
 const BOAT_WORLD_WIDTH = 102;
 const BOAT_WORLD_HEIGHT = 54;
+const WALK_SPEED_MULTIPLIER = 2.15;
+const BOAT_STEER_SPEED = 360;
+const BOAT_ACCELERATION = 820;
+const BOAT_MAX_FORWARD_SPEED = 520;
+const BOAT_MAX_REVERSE_SPEED = -220;
 const BOAT_WATER_LANES: Rect[] = [
   { x: 750, y: 700, width: 900, height: 5300 },
-const WALK_SPEED_MULTIPLIER = 1.35;
-const BOAT_STEER_SPEED = 210;
-const BOAT_ACCELERATION = 360;
-const BOAT_MAX_FORWARD_SPEED = 310;
-const BOAT_MAX_REVERSE_SPEED = -120;
   { x: 900, y: 700, width: 1100, height: 850 },
 ];
 const BOAT_BLOCKERS: Rect[] = [
@@ -703,7 +703,7 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
         const steering = (directions.includes('left') ? -1 : 0) + (directions.includes('right') ? 1 : 0);
         const throttle = directions.includes('up') ? 1 : directions.includes('down') ? -0.7 : 0;
         const heading = (currentBoat.heading + steering * BOAT_STEER_SPEED * deltaSeconds + 360) % 360;
-        const rawSpeed = currentBoat.speed + throttle * BOAT_ACCELERATION * deltaSeconds - Math.sign(currentBoat.speed) * 24 * deltaSeconds;
+        const rawSpeed = currentBoat.speed + throttle * BOAT_ACCELERATION * deltaSeconds - Math.sign(currentBoat.speed) * 8 * deltaSeconds;
         const speed = Math.abs(rawSpeed) < 1 ? 0 : clamp(rawSpeed, BOAT_MAX_REVERSE_SPEED, BOAT_MAX_FORWARD_SPEED);
         const radians = (heading * Math.PI) / 180;
         const candidate = {
@@ -868,14 +868,14 @@ export default function MainWorldMap({ onStartMission, onBackToHideout }: MainWo
   const pressDirection = (direction: Direction) => {
     const next = touchDirectionsRef.current.includes(direction) ? touchDirectionsRef.current : [...touchDirectionsRef.current, direction];
     touchDirectionsRef.current = next;
-    activeDirectionsRef.current = mergeDirectionInputs(next, keyboardControls.activeDirections);
+    activeDirectionsRef.current = mergeDirectionInputs(next, hardwareDirectionsRef.current, keyboardControls.activeDirections);
     setTouchDirections(next);
   };
 
   const releaseDirection = (direction: Direction) => {
     const next = touchDirectionsRef.current.filter((item) => item !== direction);
     touchDirectionsRef.current = next;
-    activeDirectionsRef.current = mergeDirectionInputs(next, keyboardControls.activeDirections);
+    activeDirectionsRef.current = mergeDirectionInputs(next, hardwareDirectionsRef.current, keyboardControls.activeDirections);
     setTouchDirections(next);
   };
 

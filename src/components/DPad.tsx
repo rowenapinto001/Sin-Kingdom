@@ -1,4 +1,4 @@
-import { GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { GestureResponderEvent, StyleSheet, Text, View } from 'react-native';
 import { useRef } from 'react';
 import { Direction } from '../game/types';
 
@@ -22,7 +22,7 @@ export default function DPad({ activeDirections, onDirectionPressIn, onDirection
     const { locationX, locationY } = event.nativeEvent;
     const dx = locationX - DPAD_CENTER;
     const dy = locationY - DPAD_CENTER;
-    if (Math.hypot(dx, dy) < 16) return null;
+    if (Math.hypot(dx, dy) < 8) return null;
     return Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
   };
 
@@ -46,6 +46,7 @@ export default function DPad({ activeDirections, onDirectionPressIn, onDirection
       style={styles.root}
       onStartShouldSetResponder={() => true}
       onMoveShouldSetResponder={() => true}
+      onResponderTerminationRequest={() => false}
       onResponderGrant={updateResponderDirection}
       onResponderMove={updateResponderDirection}
       onResponderRelease={releaseResponderDirection}
@@ -54,17 +55,13 @@ export default function DPad({ activeDirections, onDirectionPressIn, onDirection
       {buttons.map((button) => {
         const active = activeDirections.includes(button.direction);
         return (
-          <Pressable
+          <View
             key={button.direction}
-            hitSlop={14}
-            pressRetentionOffset={28}
-            unstable_pressDelay={0}
-            onPressIn={() => onDirectionPressIn(button.direction)}
-            onPressOut={() => onDirectionPressOut(button.direction)}
+            pointerEvents="none"
             style={[styles.button, button.style, active && styles.buttonActive]}
           >
             <Text style={styles.buttonText}>{button.label}</Text>
-          </Pressable>
+          </View>
         );
       })}
       <View pointerEvents="none" style={styles.center} />
